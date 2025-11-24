@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Sheets 設定工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Consolas', monospace;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 13px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .config-display {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border: 2px solid #667eea;
+        }
+
+        .config-display h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .config-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            word-break: break-all;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+        }
+
+        .config-item strong {
+            color: #667eea;
+        }
+
+        .steps {
+            list-style: none;
+            counter-reset: step-counter;
+        }
+
+        .steps li {
+            counter-increment: step-counter;
+            margin-bottom: 15px;
+            padding-left: 40px;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .steps li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #667eea;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+
+        code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            color: #e83e8c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Google Sheets 設定工具</h1>
+        <p class="subtitle">設定 Google Cloud API 用戶端 ID 和 Google Sheets ID</p>
+
+        <!-- 使用說明 -->
+        <div class="alert alert-info">
+            <strong>📖 使用說明</strong><br>
+            這個頁面用來設定 Google Cloud API，設定完成後就可以使用排班系統。
+        </div>
+
+        <!-- 步驟指引 -->
+        <div class="section">
+            <h2>📋 完成這些步驟</h2>
+            <ol class="steps">
+                <li>前往 <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a></li>
+                <li>建立專案並啟用 Google Sheets API</li>
+                <li>建立 OAuth 2.0 用戶端 ID（<strong>網頁應用程式</strong>類型）</li>
+                <li>複製用戶端 ID 並填入下方</li>
+                <li>建立 Google Sheets 試算表</li>
+                <li>複製 Sheet ID 並填入下方</li>
+                <li>點擊「儲存設定」</li>
+            </ol>
+            
+            <div class="alert alert-warning">
+                ⚠️ <strong>詳細步驟請參考</strong>：<code>WEB_GOOGLE_SHEETS_SETUP.md</code>
+            </div>
+        </div>
+
+        <!-- 設定表單 -->
+        <div class="section">
+            <h2>🔑 Google API 用戶端 ID</h2>
+            
+            <div class="form-group">
+                <label for="clientId">用戶端 ID *</label>
+                <input type="text" id="clientId" 
+                       placeholder="123456789-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com">
+                <small>
+                    從 Google Cloud Console → API 和服務 → 憑證 取得<br>
+                    ⚠️ 必須是<strong>網頁應用程式</strong>類型的 OAuth 2.0 用戶端 ID
+                </small>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📊 Google Sheets 設定</h2>
+            
+            <div class="form-group">
+                <label for="sheetId">Google Sheets ID *</label>
+                <input type="text" id="sheetId" 
+                       placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms">
+                <small>
+                    從 Google Sheets 網址取得：<br>
+                    <code>https://docs.google.com/spreadsheets/d/<strong>這段就是ID</strong>/edit</code>
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label for="sheetRange">資料範圍</label>
+                <input type="text" id="sheetRange" value="排班資料!A2:H">
+                <small>格式：工作表名稱!開始儲存格:結束儲存格</small>
+            </div>
+        </div>
+
+        <!-- 操作按鈕 -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button class="btn btn-primary" onclick="saveConfig()">💾 儲存設定</button>
+            <button class="btn btn-success" onclick="loadConfig()">🔄 載入已儲存的設定</button>
+        </div>
+
+        <!-- 狀態訊息 -->
+        <div id="status" class="status"></div>
+
+        <!-- 當前設定顯示 -->
+        <div id="configDisplay" style="display: none;" class="config-display">
+            <h3>✅ 已儲存的設定</h3>
+            <div class="config-item">
+                <strong>用戶端 ID：</strong><br>
+                <span id="savedClientId"></span>
+            </div>
+            <div class="config-item">
+                <strong>Sheet ID：</strong><br>
+                <span id="savedSheetId"></span>
+            </div>
+            <div class="config-item">
+                <strong>資料範圍：</strong><br>
+                <span id="savedSheetRange"></span>
+            </div>
+        </div>
+
+        <!-- 下一步 -->
+        <div class="section" id="nextSteps" style="display: none;">
+            <h2>✅ 設定完成！</h2>
+            <p style="margin-bottom: 15px;">現在您可以：</p>
+            <ol class="steps">
+                <li>關閉這個頁面</li>
+                <li>開啟 <code>shift_management_system_sheets.html</code></li>
+                <li>點擊「使用 Google 帳號登入」</li>
+                <li>開始使用排班系統！</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // 載入已儲存的設定
+        function loadConfig() {
+            const config = localStorage.getItem('sheetsConfig');
+            if (config) {
+                const data = JSON.parse(config);
+                document.getElementById('clientId').value = data.clientId || '';
+                document.getElementById('sheetId').value = data.sheetId || '';
+                document.getElementById('sheetRange').value = data.sheetRange || '排班資料!A2:H';
+                
+                displaySavedConfig(data);
+                showStatus('已載入儲存的設定', 'success');
+            } else {
+                showStatus('沒有找到已儲存的設定', 'info');
+            }
+        }
+
+        // 儲存設定
+        function saveConfig() {
+            const clientId = document.getElementById('clientId').value.trim();
+            const sheetId = document.getElementById('sheetId').value.trim();
+            const sheetRange = document.getElementById('sheetRange').value.trim();
+
+            // 驗證
+            if (!clientId) {
+                showStatus('❌ 請填入 Google API 用戶端 ID', 'error');
+                return;
+            }
+
+            if (!sheetId) {
+                showStatus('❌ 請填入 Google Sheets ID', 'error');
+                return;
+            }
+
+            // 驗證用戶端 ID 格式
+            if (!clientId.includes('apps.googleusercontent.com')) {
+                showStatus('⚠️ 用戶端 ID 格式可能不正確，應該包含 apps.googleusercontent.com', 'error');
+                return;
+            }
+
+            // 儲存到 localStorage
+            const config = {
+                clientId: clientId,
+                sheetId: sheetId,
+                sheetRange: sheetRange
+            };
+
+            localStorage.setItem('sheetsConfig', JSON.stringify(config));
+
+            // 顯示成功訊息
+            showStatus('✅ 設定已成功儲存！現在可以開啟 shift_management_system_sheets.html 使用', 'success');
+
+            // 顯示已儲存的設定
+            displaySavedConfig(config);
+
+            // 顯示下一步
+            document.getElementById('nextSteps').style.display = 'block';
+        }
+
+        // 顯示已儲存的設定
+        function displaySavedConfig(config) {
+            document.getElementById('savedClientId').textContent = config.clientId;
+            document.getElementById('savedSheetId').textContent = config.sheetId;
+            document.getElementById('savedSheetRange').textContent = config.sheetRange;
+            document.getElementById('configDisplay').style.display = 'block';
+        }
+
+        // 顯示狀態訊息
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = 'status show status-' + type;
+            statusEl.textContent = message;
+
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusEl.className = 'status';
+                }, 5000);
+            }
+        }
+
+        // 頁面載入時自動載入設定
+        window.onload = function() {
+            loadConfig();
+        };
+    </script>
+</body>
+</html>
+

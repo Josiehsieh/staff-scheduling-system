@@ -1,0 +1,53 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="180dp"
+    android:height="110dp"
+    android:viewportWidth="180"
+    android:viewportHeight="110">
+    
+    <!-- Background -->
+    <path
+        android:fillColor="#F5F5F5"
+        android:pathData="M0,0h180v110h-180z"/>
+    
+    <!-- Header -->
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M8,8h164v40h-164z"/>
+    
+    <!-- Date text -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M16,16h80v12h-80z"/>
+    
+    <!-- Event count text -->
+    <path
+        android:fillColor="#E0E0E0"
+        android:pathData="M16,32h60v8h-60z"/>
+    
+    <!-- Event items -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M8,56h164v12h-164z"/>
+    
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M8,72h164v12h-164z"/>
+    
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M8,88h164v12h-164z"/>
+    
+    <!-- Event color indicators -->
+    <path
+        android:fillColor="#FF5722"
+        android:pathData="M12,60h4v4h-4z"/>
+    
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M12,76h4v4h-4z"/>
+    
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M12,92h4v4h-4z"/>
+    
+</vector> 

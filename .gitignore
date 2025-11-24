@@ -1,0 +1,48 @@
+# Java 開發檔案
+*.class
+*.jar
+*.war
+*.ear
+target/
+build/
+.gradle/
+gradle/
+gradlew
+gradlew.bat
+
+# Android Studio
+.idea/
+*.iml
+.DS_Store
+local.properties
+*.apk
+*.ap_
+*.dex
+
+# JDK 資料夾
+java-1.8.0-openjdk-*/
+
+# Node modules (如果有使用)
+node_modules/
+
+# 系統檔案
+.DS_Store
+Thumbs.db
+*.log
+
+# 用戶個人配置（不應該上傳）
+# 注意：不要在這裡加入 HTML 檔案，因為那是網站主體
+
+# 備份檔案
+*.bak
+*.backup
+*~
+
+# 編輯器暫存檔
+.vscode/
+.vs/
+*.swp
+*.swo
+*.swn
+
+

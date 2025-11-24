@@ -1,0 +1,2647 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>醫療排班管理系統</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: none;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 10px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+
+        .nav-tab.active {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .tab-content {
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            min-height: calc(100vh - 200px);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .color-option:hover {
+            border-color: #333;
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .color-option.selected {
+            border-color: #333;
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .color-option.used {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(100%);
+        }
+
+        .color-option.used:hover {
+            transform: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .schedule-container {
+            display: flex;
+            gap: 20px;
+            height: 70vh;
+            width: 100%;
+        }
+
+        .calendar-section {
+            flex: 2;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            overflow-y: auto;
+            overflow-x: auto;
+            min-width: 800px;
+        }
+
+        .dashboard-section {
+            flex: 1;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+        }
+
+        .view-btn {
+            padding: 8px 16px;
+            border: none;
+            background: #f0f0f0;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .view-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            min-width: 700px;
+        }
+
+        .calendar-day {
+            background: white;
+            padding: 15px 10px;
+            min-height: 100px;
+            min-width: 100px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            position: relative;
+        }
+
+        .calendar-day:hover {
+            background: #f5f5f5;
+        }
+
+        .calendar-day.selected {
+            background: #e3f2fd;
+        }
+
+        .day-number {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .shift-item {
+            font-size: 11px;
+            background: #667eea;
+            color: white;
+            padding: 3px 6px;
+            border-radius: 4px;
+            margin: 2px 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+            line-height: 1.2;
+        }
+
+        .dashboard-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+
+        .units-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .unit-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .unit-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .unit-item.selected {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .unit-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .unit-info {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .daily-shifts {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 1200px) {
+            .schedule-container {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .calendar-section {
+                min-width: auto;
+                overflow-x: auto;
+            }
+            
+            .calendar-grid {
+                min-width: 600px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .tab-content {
+                padding: 20px;
+            }
+            
+            .calendar-grid {
+                min-width: 500px;
+            }
+            
+            .calendar-day {
+                min-width: 80px;
+                padding: 10px 5px;
+            }
+        }
+
+        .shift-detail {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .shift-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+            border-radius: 15px;
+        }
+
+        .selected-unit-info {
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-success {
+            background: #51cf66;
+            color: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-item:hover {
+            border-color: #667eea;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        .monthly-hours {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .month-input {
+            text-align: center;
+        }
+
+        .month-input label {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        .addresses-container {
+            margin-top: 15px;
+        }
+
+        .address-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .address-item input {
+            flex: 1;
+        }
+
+        .address-item button {
+            padding: 8px 12px;
+            border: none;
+            background: #ff6b6b;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* 拖曳樣式 */
+        .calendar-day-dragover {
+            background: #e3f2fd !important;
+            outline: 2px dashed #667eea;
+        }
+        
+        .unit-item.dragging {
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .schedule-container {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .calendar-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>醫療排班管理系統</h1>
+            <p>高效管理醫護人員排班，優化資源配置</p>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('unit')">事業單位管理</button>
+            <button class="nav-tab" onclick="switchTab('schedule')">排班管理</button>
+        </div>
+
+        <!-- 事業單位管理頁面 -->
+        <div id="unit-tab" class="tab-content active">
+            <h2>事業單位設定</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>事業單位名稱</label>
+                    <input type="text" id="unitName" placeholder="請輸入事業單位名稱">
+                </div>
+                
+                <div class="form-group" style="display: flex; align-items: center; gap: 20px;">
+                    <div style="flex:1;">
+                        <label>是否為分散型</label>
+                        <div id="isDistributedBtns" style="display:flex;gap:10px;">
+                            <button type="button" class="btn btn-small" id="btnDistributedNo" onclick="setDistributed('否')">否</button>
+                            <button type="button" class="btn btn-small" id="btnDistributedYes" onclick="setDistributed('是')">是</button>
+                        </div>
+                        <input type="hidden" id="isDistributed" value="否">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label>是否有補助</label>
+                        <input type="checkbox" id="subsidyYes" onclick="setSubsidy('是')"><label for="subsidyYes">是</label>
+                        <input type="checkbox" id="subsidyNo" onclick="setSubsidy('否')"><label for="subsidyNo">否</label>
+                        <input type="hidden" id="hasSubsidy" value="否">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 地址區塊（單一或多分點） -->
+            <div id="addressesSection" class="form-group" style="display: none;">
+                <label id="addressLabel">事業單位地址</label>
+                <div id="singleAddressContainer" style="display:none;">
+                    <input type="text" id="singleAddress" placeholder="請輸入地址">
+                </div>
+                <div id="branchesContainer" class="addresses-container" style="display:none;"></div>
+                <button class="btn btn-primary" id="addBranchBtn" style="display:none;" onclick="addBranch()">新增分點</button>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>護理師姓名（每行一個）</label>
+                    <textarea id="nurseNames" placeholder="請輸入護理師姓名，每行一個"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>醫生姓名（每行一個）</label>
+                    <textarea id="doctorNames" placeholder="請輸入醫生姓名，每行一個"></textarea>
+                </div>
+            </div>
+
+            <div class="monthly-hours">
+                <div class="month-input">
+                    <label>一月</label>
+                    <input type="number" placeholder="醫生時數" id="docHours1">
+                    <input type="number" placeholder="護理師時數" id="nurseHours1">
+                </div>
+                <div class="month-input">
+                    <label>二月</label>
+                    <input type="number" placeholder="醫生時數" id="docHours2">
+                    <input type="number" placeholder="護理師時數" id="nurseHours2">
+                </div>
+                <div class="month-input">
+                    <label>三月</label>
+                    <input type="number" placeholder="醫生時數" id="docHours3">
+                    <input type="number" placeholder="護理師時數" id="nurseHours3">
+                </div>
+                <div class="month-input">
+                    <label>四月</label>
+                    <input type="number" placeholder="醫生時數" id="docHours4">
+                    <input type="number" placeholder="護理師時數" id="nurseHours4">
+                </div>
+                <div class="month-input">
+                    <label>五月</label>
+                    <input type="number" placeholder="醫生時數" id="docHours5">
+                    <input type="number" placeholder="護理師時數" id="nurseHours5">
+                </div>
+                <div class="month-input">
+                    <label>六月</label>
+                    <input type="number" placeholder="醫生時數" id="docHours6">
+                    <input type="number" placeholder="護理師時數" id="nurseHours6">
+                </div>
+                <div class="month-input">
+                    <label>七月</label>
+                    <input type="number" placeholder="醫生時數" id="docHours7">
+                    <input type="number" placeholder="護理師時數" id="nurseHours7">
+                </div>
+                <div class="month-input">
+                    <label>八月</label>
+                    <input type="number" placeholder="醫生時數" id="docHours8">
+                    <input type="number" placeholder="護理師時數" id="nurseHours8">
+                </div>
+                <div class="month-input">
+                    <label>九月</label>
+                    <input type="number" placeholder="醫生時數" id="docHours9">
+                    <input type="number" placeholder="護理師時數" id="nurseHours9">
+                </div>
+                <div class="month-input">
+                    <label>十月</label>
+                    <input type="number" placeholder="醫生時數" id="docHours10">
+                    <input type="number" placeholder="護理師時數" id="nurseHours10">
+                </div>
+                <div class="month-input">
+                    <label>十一月</label>
+                    <input type="number" placeholder="醫生時數" id="docHours11">
+                    <input type="number" placeholder="護理師時數" id="nurseHours11">
+                </div>
+                <div class="month-input">
+                    <label>十二月</label>
+                    <input type="number" placeholder="醫生時數" id="docHours12">
+                    <input type="number" placeholder="護理師時數" id="nurseHours12">
+                </div>
+            </div>
+
+            <!-- 將顏色主題選擇移到這裡 -->
+            <div class="form-group">
+                <label>選擇顏色主題</label>
+                <div class="color-palette" id="colorPalette"></div>
+                <button type="button" class="btn btn-secondary" onclick="initColorPalette()" style="margin-top: 10px;">
+                    🔄 重新載入顏色選項
+                </button>
+            </div>
+
+            <!-- 排班規則設定 -->
+            <div class="form-group">
+                <label>設定排班規則</label>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 10px;">
+                    <h4 style="margin-bottom: 15px; color: #333;">禁止排班的星期</h4>
+                    <div class="checkbox-group" id="weekdayRestrictions">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="restrict_sunday" value="0">
+                            <label for="restrict_sunday">星期日</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="restrict_monday" value="1">
+                            <label for="restrict_monday">星期一</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="restrict_tuesday" value="2">
+                            <label for="restrict_tuesday">星期二</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="restrict_wednesday" value="3">
+                            <label for="restrict_wednesday">星期三</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="restrict_thursday" value="4">
+                            <label for="restrict_thursday">星期四</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="restrict_friday" value="5">
+                            <label for="restrict_friday">星期五</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="restrict_saturday" value="6">
+                            <label for="restrict_saturday">星期六</label>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; padding: 10px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+                        <small style="color: #1976d2;">
+                            <strong>說明：</strong>勾選的星期將被禁止排班。系統會在排班時自動檢查並提醒違反規則的排班安排。
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="btn btn-info" onclick="clearUnitForm()" style="margin-right: 10px;">新增事業單位</button>
+                <button class="btn btn-primary" onclick="saveUnit()">儲存事業單位</button>
+                <button class="btn btn-success" onclick="exportToExcel()">📊 匯出排班Excel</button>
+            </div>
+
+            <!-- 事業單位年度時數列表 -->
+            <div id="unitYearlyList" style="margin-top:40px;">
+                <h3 style="text-align:left;">已建檔事業單位年度時數總覽</h3>
+                <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px #eee;">
+                    <thead style="background:#f0f0f0;">
+                        <tr>
+                            <th style="padding:10px;">單位名稱</th>
+                            <th>護理師年度總時數</th>
+                            <th>醫師年度總時數</th>
+                            <th>護理師剩餘年度時數</th>
+                            <th>醫師剩餘年度時數</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="unitYearlyTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 排班管理頁面 -->
+        <div id="schedule-tab" class="tab-content">
+            <div class="schedule-container">
+                <div class="calendar-section">
+                    <div class="calendar-header">
+                        <h3 id="currentMonthYear">2025年7月</h3>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <button class="btn btn-small" onclick="changeMonth(-1)">上個月</button>
+                            <button class="btn btn-small" onclick="changeMonth(1)">下個月</button>
+                            <button class="btn btn-success" onclick="exportToExcel()" style="margin-left: 20px;">📊 匯出Excel</button>
+                        </div>
+                        <div class="view-toggle">
+                            <button class="view-btn active" onclick="switchView('month')">月</button>
+                            <button class="view-btn" onclick="switchView('week')">週</button>
+                        </div>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid"></div>
+                </div>
+
+                <div class="dashboard-section">
+                    <h3>事業單位列表</h3>
+                    
+                    <div id="unitsList" class="units-list">
+                        <!-- 事業單位列表將動態生成 -->
+                    </div>
+
+                    <div class="selected-unit-info" id="selectedUnitInfo" style="display: none;">
+                        <h4 id="selectedUnitName">選中的事業單位</h4>
+                        
+                        <div class="dashboard-card">
+                            <h4>醫生剩餘時數</h4>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="doctorProgress" style="width: 60%"></div>
+                            </div>
+                            <p id="doctorHoursText">剩餘: 180小時 / 總計: 300小時</p>
+                        </div>
+
+                        <div class="dashboard-card">
+                            <h4>護理師剩餘時數</h4>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="nurseProgress" style="width: 55%"></div>
+                            </div>
+                            <p id="nurseHoursText">剩餘: 220小時 / 總計: 400小時</p>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="openShiftModal()" style="width: 100%; margin-top: 20px;">
+                            新增排班
+                        </button>
+                    </div>
+
+                    <div class="daily-shifts" id="dailyShifts" style="display: none;">
+                        <h4 id="selectedDateTitle">選定日期排班</h4>
+                        <div id="shiftsOnDate"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增排班模態框 -->
+    <div id="shiftModal" class="modal">
+        <div class="modal-content">
+            <h3>新增排班</h3>
+            
+            <div class="form-group">
+                <label>事業單位</label>
+                <input type="text" id="selectedUnitDisplay" readonly style="background: #f0f0f0;">
+            </div>
+            
+            <div class="form-group" id="branchSelectGroup" style="display:none;">
+                <label>分點</label>
+                <select id="branchSelect"></select>
+            </div>
+            <div class="form-group">
+                <label>選擇日期</label>
+                <input type="date" id="shiftDate">
+            </div>
+            
+            <div class="form-group">
+                <label>開始時間</label>
+                <input type="time" id="startTime" onchange="calculateHours()">
+            </div>
+            
+            <div class="form-group">
+                <label>結束時間</label>
+                <input type="time" id="endTime" onchange="calculateHours()">
+            </div>
+
+            <div class="form-group">
+                <label>需扣除時數</label>
+                <input type="number" id="deductHours" step="0.5" min="0" readonly style="background: #f0f0f0;">
+                <small style="color: #666;">系統自動計算</small>
+            </div>
+
+            <div class="form-group">
+                <label>選擇人員</label>
+                <div class="checkbox-group" id="staffCheckboxes"></div>
+            </div>
+
+            <!-- 重複排班設定 -->
+            <div class="form-group">
+                <label>重複排班</label>
+                <div style="margin-bottom: 10px;">
+                    <input type="checkbox" id="enableRepeat" onchange="toggleRepeatOptions()">
+                    <label for="enableRepeat" style="margin-left: 5px;">啟用重複排班</label>
+                </div>
+                
+                <div id="repeatOptions" style="display: none; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                    <div style="margin-bottom: 10px;">
+                        <label>重複頻率：</label>
+                        <select id="repeatType" style="margin-left: 10px;">
+                            <option value="daily">每日</option>
+                            <option value="weekly">每週</option>
+                            <option value="monthly">每月</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 10px;">
+                        <label>重複次數：</label>
+                        <input type="number" id="repeatCount" min="1" max="52" value="1" style="width: 60px; margin-left: 10px;">
+                        <small style="color: #666; margin-left: 5px;">次</small>
+                    </div>
+                    
+                    <div id="weeklyOptions" style="display: none; margin-bottom: 10px;">
+                        <label>選擇星期：</label>
+                        <div style="margin-top: 5px;">
+                            <input type="checkbox" id="weekday0" value="0"><label for="weekday0" style="margin-left: 5px; margin-right: 10px;">日</label>
+                            <input type="checkbox" id="weekday1" value="1"><label for="weekday1" style="margin-left: 5px; margin-right: 10px;">一</label>
+                            <input type="checkbox" id="weekday2" value="2"><label for="weekday2" style="margin-left: 5px; margin-right: 10px;">二</label>
+                            <input type="checkbox" id="weekday3" value="3"><label for="weekday3" style="margin-left: 5px; margin-right: 10px;">三</label>
+                            <input type="checkbox" id="weekday4" value="4"><label for="weekday4" style="margin-left: 5px; margin-right: 10px;">四</label>
+                            <input type="checkbox" id="weekday5" value="5"><label for="weekday5" style="margin-left: 5px; margin-right: 10px;">五</label>
+                            <input type="checkbox" id="weekday6" value="6"><label for="weekday6" style="margin-left: 5px; margin-right: 10px;">六</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="saveShift()">儲存排班</button>
+                <button class="btn btn-danger" onclick="closeShiftModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        // 30種顏色選項 - 完全無重複
+        const colors = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+            '#DDA0DD', '#98D8C8', '#FDCB6E', '#6C5CE7', '#A29BFE',
+            '#FD79A8', '#00B894', '#00CEC9', '#55A3FF', '#FF7675',
+            '#74B9FF', '#81ECEC', '#E17055', '#E84393', '#FF9FF3',
+            '#FECA57', '#48DB71', '#FF9F43', '#54A0FF', '#5F27CD',
+            '#00D2D3', '#FF6348', '#2ED573', '#1E90FF', '#FFA502'
+        ];
+
+        // Supabase 初始化
+        const SUPABASE_URL = 'https://litnrtwcihcvpxpfufeg.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxpdG5ydHdjaWhjdnB4cGZ1ZmVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1Mzc3NTMsImV4cCI6MjA2OTExMzc1M30.NmnxXnbo1LD-BVBoxUxeFCNVHyUZaGtSCDGdXtVNLfY';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // 全域變數
+        let currentDate = new Date();
+        let currentView = 'month';
+        let shifts = [];
+        let units = [];
+        let selectedUnit = null;
+        let selectedDate = null;
+        let editingShift = null;
+
+        // 讀取事業單位與分點資料
+        async function loadUnitsFromSupabase() {
+            try {
+                const { data, error } = await supabase.from('v_units_complete').select('*');
+                if (error) {
+                    console.error('載入事業單位失敗：', error);
+                    alert('載入事業單位失敗：' + error.message);
+                    return;
+                }
+                units = data || [];
+                updateUnitsList();
+                updateUnitYearlyList();
+                
+                // 重新初始化顏色選擇器以反映最新的已使用顏色
+                initColorPalette();
+            } catch (err) {
+                console.error('載入事業單位異常：', err);
+                alert('載入事業單位異常：' + err.message);
+            }
+        }
+
+        // 讀取排班資料
+        async function loadShiftsFromSupabase() {
+            try {
+                const { data, error } = await supabase.from('v_shifts_detail').select('*');
+                if (error) {
+                    console.error('載入排班資料失敗：', error);
+                    alert('載入排班資料失敗：' + error.message);
+                    return;
+                }
+                shifts = data || [];
+                generateCalendar();
+            } catch (err) {
+                console.error('載入排班資料異常：', err);
+                alert('載入排班資料異常：' + err.message);
+            }
+        }
+
+
+
+        // 工具函數
+        function formatDateLocal(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatTimeHHMM(timeString) {
+            if (!timeString) return '';
+            // 如果時間格式是 HH:MM:SS，只取前5個字符 (HH:MM)
+            return timeString.substring(0, 5);
+        }
+
+        function getWeekdayNames(weekdayNumbers) {
+            const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+            return weekdayNumbers.map(num => `星期${weekdays[num]}`).join('、');
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('DOM載入完成，開始初始化...');
+            
+            // 延遲一點時間確保所有元素都載入完成
+            setTimeout(() => {
+                initColorPalette();
+            }, 100);
+            
+            generateCalendar();
+            await loadUnitsFromSupabase();
+            await loadShiftsFromSupabase();
+            setDistributed('否');
+            setSubsidy('否');
+            
+            // 新增起始時間自動+2小時
+            document.getElementById('startTime').addEventListener('input', function() {
+                const start = this.value;
+                if (start) {
+                    const endInput = document.getElementById('endTime');
+                    if (!endInput.value) {
+                        let [h, m] = start.split(':').map(Number);
+                        h = (h + 2) % 24;
+                        const endStr = h.toString().padStart(2, '0') + ':' + m.toString().padStart(2, '0');
+                        endInput.value = endStr;
+                        calculateHours();
+                    }
+                }
+            });
+        });
+
+        function initColorPalette() {
+            console.log('開始初始化顏色選擇器...');
+            const palette = document.getElementById('colorPalette');
+            if (!palette) {
+                console.error('找不到 colorPalette 元素');
+                return;
+            }
+            
+            console.log('找到 colorPalette 元素:', palette);
+            console.log('初始化顏色選擇器，顏色數量:', colors.length);
+            console.log('顏色陣列:', colors);
+            
+            palette.innerHTML = ''; // 清空現有內容
+            
+            // 獲取已使用的顏色
+            const usedColors = units.map(u => u.color).filter(color => color);
+            console.log('已使用的顏色:', usedColors);
+            
+            colors.forEach((color, index) => {
+                const colorDiv = document.createElement('div');
+                colorDiv.className = 'color-option';
+                colorDiv.style.backgroundColor = color;
+                colorDiv.title = color; // 加入提示
+                colorDiv.setAttribute('data-color', color); // 儲存 HEX 顏色值
+                
+                // 檢查是否已被使用
+                const isUsed = usedColors.includes(color);
+                if (isUsed) {
+                    colorDiv.classList.add('used');
+                    colorDiv.title = `${color} (已被使用)`;
+                }
+                
+                colorDiv.onclick = () => {
+                    if (!isUsed) {
+                        selectColor(colorDiv, color);
+                    } else {
+                        console.log('無法選擇已使用的顏色:', color);
+                    }
+                };
+                
+                palette.appendChild(colorDiv);
+                console.log(`建立顏色選項 ${index + 1}: ${color} ${isUsed ? '(已使用)' : '(可用)'}`);
+            });
+            
+            console.log('顏色選擇器初始化完成，已建立', palette.children.length, '個顏色選項');
+            console.log('palette 內容:', palette.innerHTML);
+        }
+
+        function selectColor(element, color) {
+            // 檢查是否為已使用的顏色
+            if (element.classList.contains('used')) {
+                console.log('無法選擇已使用的顏色:', color);
+                return;
+            }
+            
+            document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            console.log('已選擇顏色:', color);
+            
+            // 確保顏色值正確儲存
+            if (color && color.startsWith('#')) {
+                element.setAttribute('data-color', color);
+            }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tab + '-tab').classList.add('active');
+        }
+
+        function toggleAddresses() {
+            const isDistributed = document.getElementById('isDistributed').value;
+            const addressSection = document.getElementById('addressesSection');
+            const singleAddress = document.getElementById('singleAddressContainer');
+            const branchesContainer = document.getElementById('branchesContainer');
+            const addBranchBtn = document.getElementById('addBranchBtn');
+            
+            addressSection.style.display = 'block';
+            
+            if (isDistributed === '否') {
+                document.getElementById('addressLabel').textContent = '事業單位地址';
+                singleAddress.style.display = 'block';
+                branchesContainer.style.display = 'none';
+                addBranchBtn.style.display = 'none';
+            } else {
+                document.getElementById('addressLabel').textContent = '分點資訊';
+                singleAddress.style.display = 'none';
+                branchesContainer.style.display = 'block';
+                addBranchBtn.style.display = 'inline-block';
+                if (branchesContainer.children.length === 0) addBranch();
+            }
+        }
+
+        function setDistributed(val) {
+            document.getElementById('isDistributed').value = val;
+            document.getElementById('btnDistributedNo').classList.toggle('btn-primary', val==='否');
+            document.getElementById('btnDistributedYes').classList.toggle('btn-primary', val==='是');
+            toggleAddresses();
+        }
+
+        function setSubsidy(val) {
+            document.getElementById('hasSubsidy').value = val;
+            if(val==='是') {
+                document.getElementById('subsidyYes').checked = true;
+                document.getElementById('subsidyNo').checked = false;
+            } else {
+                document.getElementById('subsidyYes').checked = false;
+                document.getElementById('subsidyNo').checked = true;
+            }
+        }
+
+        function addBranch(branch = {name:'', address:'', contact:''}) {
+            const container = document.getElementById('branchesContainer');
+            const div = document.createElement('div');
+            div.className = 'address-item';
+            div.innerHTML = `
+                <input type="text" placeholder="分點名稱" value="${branch.name||''}" style="width:20%"> 
+                <input type="text" placeholder="地址" value="${branch.address||''}" style="width:40%"> 
+                <input type="text" placeholder="聯絡人" value="${branch.contact||''}" style="width:25%"> 
+                <button onclick="removeBranch(this)">刪除</button>
+            `;
+            container.appendChild(div);
+        }
+
+        function removeBranch(btn) {
+            btn.parentElement.remove();
+        }
+
+        function generateCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            document.getElementById('currentMonthYear').textContent = `${year}年${month + 1}月`;
+            grid.innerHTML = '';
+
+            // 添加星期標題
+            const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+            weekDays.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.style.background = '#f0f0f0';
+                dayHeader.style.fontWeight = 'bold';
+                dayHeader.style.textAlign = 'center';
+                dayHeader.style.padding = '10px';
+                dayHeader.textContent = day;
+                grid.appendChild(dayHeader);
+            });
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            // 填充空白日期
+            for (let i = 0; i < firstDay; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-day';
+                grid.appendChild(emptyDay);
+            }
+
+            // 填充實際日期
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day';
+                dayElement.setAttribute('data-day', day);
+                
+                const currentDayDate = new Date(year, month, day);
+                const weekday = currentDayDate.getDay();
+                
+                // 檢查是否有選中的單位且該日期被禁止排班
+                let isRestricted = false;
+                if (selectedUnit && selectedUnit.restricted_weekdays && selectedUnit.restricted_weekdays.includes(weekday)) {
+                    isRestricted = true;
+                    dayElement.style.background = '#fff3cd';
+                    dayElement.style.border = '2px solid #ffc107';
+                    dayElement.title = '⚠️ 此日期被禁止排班';
+                }
+                
+                dayElement.innerHTML = `<div class="day-number">${day}</div>`;
+                dayElement.onclick = () => selectDate(day);
+                
+                // 拖曳放置功能
+                dayElement.ondragover = (e) => {
+                    e.preventDefault();
+                    dayElement.classList.add('calendar-day-dragover');
+                };
+                dayElement.ondragleave = () => {
+                    dayElement.classList.remove('calendar-day-dragover');
+                };
+                dayElement.ondrop = (e) => {
+                    e.preventDefault();
+                    dayElement.classList.remove('calendar-day-dragover');
+                    const unitId = e.dataTransfer.getData('unitId');
+                    const unit = units.find(u => u.id == unitId);
+                    if (unit) {
+                        selectedUnit = unit;
+                        selectedDate = new Date(year, month, day);
+                        updateUnitSelection(unit);
+                        openShiftModal();
+                    }
+                };
+
+                // 顯示當日排班
+                const dayShifts = shifts.filter(shift => 
+                    new Date(shift.shift_date).getDate() === day &&
+                    new Date(shift.shift_date).getMonth() === month &&
+                    new Date(shift.shift_date).getFullYear() === year
+                );
+                
+                // 依照開始時間排序
+                dayShifts.sort((a, b) => {
+                    const timeA = new Date(`2000-01-01 ${a.start_time}`);
+                    const timeB = new Date(`2000-01-01 ${b.start_time}`);
+                    return timeA - timeB;
+                });
+                
+                dayShifts.forEach(shift => {
+                    const unit = units.find(u => u.id === shift.unit_id);
+                    const color = unit ? unit.color : '#667eea';
+                    const shortName = unit ? unit.name.slice(0,4) : '';
+                    const shiftDiv = document.createElement('div');
+                    shiftDiv.className = 'shift-item';
+                    shiftDiv.style.background = color;
+                    
+                    // 生成顯示文字
+                    const startTime = formatTimeHHMM(shift.start_time);
+                    const endTime = formatTimeHHMM(shift.end_time);
+                    const timeStr = `${startTime}-${endTime}`;
+                    
+                    let displayText = '';
+                    if (shift.branch_name) {
+                        // 分點排班：HH:MM-HH:MM xx(分點名)醫師/護理師名
+                        const staffNames = shift.staff_names ? shift.staff_names.join(', ') : '';
+                        const displayNames = staffNames.length > 15 ? staffNames.substring(0, 15) + '...' : staffNames;
+                        displayText = `${timeStr} ${shortName}(${shift.branch_name}) ${displayNames}`;
+                    } else {
+                        // 一般排班：HH:MM-HH:MM xx醫師/護理師名
+                        const staffNames = shift.staff_names ? shift.staff_names.join(', ') : '';
+                        const displayNames = staffNames.length > 15 ? staffNames.substring(0, 15) + '...' : staffNames;
+                        displayText = `${timeStr} ${shortName} ${displayNames}`;
+                    }
+                    
+                    shiftDiv.textContent = displayText;
+                    shiftDiv.onclick = (e) => {
+                        e.stopPropagation();
+                        editShift(shift);
+                    };
+                    
+                    // 檢查是否違反排班規則
+                    const shiftDate = new Date(shift.shift_date);
+                    const weekday = shiftDate.getDay();
+                    if (unit && unit.restricted_weekdays && unit.restricted_weekdays.includes(weekday)) {
+                        shiftDiv.style.border = '2px solid #ff4444';
+                        shiftDiv.style.boxShadow = '0 0 5px #ff4444';
+                        shiftDiv.title = '⚠️ 違反排班規則';
+                    }
+                    
+                    dayElement.appendChild(shiftDiv);
+                });
+
+                grid.appendChild(dayElement);
+            }
+        }
+
+        function selectDate(day) {
+            // 清除之前選中的日期
+            document.querySelectorAll('.calendar-day').forEach(el => el.classList.remove('selected'));
+            
+            // 選中當前日期
+            const currentDayElement = document.querySelector(`[data-day="${day}"]`);
+            if (currentDayElement) {
+                currentDayElement.classList.add('selected');
+            }
+            
+            selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+            
+            // 如果有選中事業單位，顯示當天排班
+            if (selectedUnit) {
+                showDayShifts();
+            }
+        }
+
+        function showDayShifts() {
+            const dailyShiftsDiv = document.getElementById('dailyShifts');
+            const shiftsOnDateDiv = document.getElementById('shiftsOnDate');
+            const selectedDateTitle = document.getElementById('selectedDateTitle');
+            
+            if (!selectedDate) return;
+            
+            const dateStr = formatDateLocal(selectedDate);
+            selectedDateTitle.textContent = `${selectedDate.getFullYear()}年${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日 排班`;
+            
+            // 篩選當天該事業單位的排班
+            const dayShifts = shifts.filter(shift => 
+                shift.shift_date === dateStr && shift.unit_id === selectedUnit.id
+            );
+            
+            // 依照開始時間排序
+            dayShifts.sort((a, b) => {
+                const timeA = new Date(`2000-01-01 ${a.start_time}`);
+                const timeB = new Date(`2000-01-01 ${b.start_time}`);
+                return timeA - timeB;
+            });
+            
+            shiftsOnDateDiv.innerHTML = '';
+            
+            if (dayShifts.length === 0) {
+                shiftsOnDateDiv.innerHTML = '<p style="text-align: center; color: #666;">該日無排班</p>';
+            } else {
+                dayShifts.forEach(shift => {
+                    const shiftDiv = document.createElement('div');
+                    shiftDiv.className = 'shift-detail';
+                    shiftDiv.innerHTML = `
+                        <div><strong>時間：</strong>${formatTimeHHMM(shift.start_time)} - ${formatTimeHHMM(shift.end_time)}</div>
+                        ${shift.branch_name ? `<div><strong>分點：</strong>${shift.branch_name}</div>` : ''}
+                        <div><strong>人員：</strong>${shift.staff_names.join(', ')}</div>
+                        <div><strong>時數：</strong>${shift.total_hours}小時</div>
+                        <div class="shift-actions">
+                            <button class="btn btn-primary btn-small" onclick="editShift(${shift.id})">修改</button>
+                            <button class="btn btn-danger btn-small" onclick="deleteShift(${shift.id})">刪除</button>
+                        </div>
+                    `;
+                    shiftsOnDateDiv.appendChild(shiftDiv);
+                });
+            }
+            
+            dailyShiftsDiv.style.display = 'block';
+        }
+
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        async function updateUnitsList() {
+            const unitsList = document.getElementById('unitsList');
+            unitsList.innerHTML = '';
+
+            if (units.length === 0) {
+                unitsList.innerHTML = '<p style="text-align: center; color: #666;">尚未建立事業單位</p>';
+                return;
+            }
+
+            for (const unit of units) {
+                if (!unit || !unit.id) continue; // 跳過無效的單位
+                
+                const unitItem = document.createElement('div');
+                unitItem.className = 'unit-item';
+                unitItem.setAttribute('data-unit-id', unit.id);
+                
+                // 取得剩餘時數
+                const docRemain = await getUnitMonthRemain(unit, 'doctors');
+                const nurseRemain = await getUnitMonthRemain(unit, 'nurses');
+                
+                // 檢查是否沒有剩餘時數
+                const hasNoRemainingHours = docRemain <= 0 && nurseRemain <= 0;
+                
+                unitItem.innerHTML = `
+                    <div class="unit-info">
+                        <div class="unit-color" style="background-color: ${unit.color}"></div>
+                        <div>
+                            <div><strong>${unit.name}</strong></div>
+                            <div style="font-size: 12px; color: #666;">
+                                醫生${(unit.doctors || []).length}人 | 護理師${(unit.nurses || []).length}人
+                            </div>
+                            <div style='font-size:12px;color:#333;margin-top:4px;'>
+                                <span>本月剩餘時數：</span>
+                                <span style='color:#667eea;'>醫師${docRemain}h</span> / 
+                                <span style='color:#51cf66;'>護理師${nurseRemain}h</span>
+                            </div>
+                            ${unit.restricted_weekdays && unit.restricted_weekdays.length > 0 ? 
+                                `<div style='font-size:11px;color:#ff6b6b;margin-top:2px;'>
+                                    ⚠️ 禁止排班：${getWeekdayNames(unit.restricted_weekdays)}
+                                </div>` : ''
+                            }
+                        </div>
+                    </div>
+                `;
+                
+                // 如果沒有剩餘時數，套用灰色樣式
+                if (hasNoRemainingHours) {
+                    unitItem.style.opacity = '0.5';
+                    unitItem.style.filter = 'grayscale(100%)';
+                    unitItem.title = '無剩餘時數';
+                }
+                
+                unitItem.onclick = () => selectUnit(unitItem, unit);
+                
+                // 拖曳功能
+                unitItem.setAttribute('draggable', 'true');
+                unitItem.ondragstart = (e) => {
+                    e.dataTransfer.setData('unitId', unit.id);
+                    unitItem.classList.add('dragging');
+                };
+                unitItem.ondragend = () => {
+                    unitItem.classList.remove('dragging');
+                };
+                
+                unitsList.appendChild(unitItem);
+            }
+        }
+
+        async function selectUnit(element, unit) {
+            updateUnitSelection(unit);
+            selectedUnit = unit;
+            
+            // 顯示事業單位資訊
+            document.getElementById('selectedUnitInfo').style.display = 'block';
+            document.getElementById('selectedUnitName').textContent = unit.name;
+            
+            await updateUnitDashboard();
+            
+            // 如果有選中日期，顯示當天排班
+            if (selectedDate) {
+                showDayShifts();
+            }
+        }
+
+        function updateUnitSelection(unit) {
+            // 更新視覺選中狀態
+            document.querySelectorAll('.unit-item').forEach(el => el.classList.remove('selected'));
+            const selectedElement = document.querySelector(`[data-unit-id="${unit.id}"]`);
+            if (selectedElement) {
+                selectedElement.classList.add('selected');
+            }
+        }
+
+        async function updateUnitDashboard() {
+            if (!selectedUnit) {
+                // 如果沒有選中的單位，隱藏儀表板
+                document.getElementById('selectedUnitInfo').style.display = 'none';
+                return;
+            }
+            
+            const currentMonth = currentDate.getMonth() + 1; // 月份從1開始
+            // 從 Supabase 讀取月度時數
+            const { data: monthlyData, error } = await supabase
+                .from('monthly_hours')
+                .select('doctor_hours, nurse_hours')
+                .eq('unit_id', selectedUnit.id)
+                .eq('year', currentDate.getFullYear())
+                .eq('month', currentMonth);
+            
+            if (error) {
+                console.error('讀取月度時數失敗:', error);
+                return;
+            }
+            
+            // 取第一筆資料，如果沒有資料則使用預設值
+            const monthlyRecord = monthlyData && monthlyData.length > 0 ? monthlyData[0] : null;
+            const totalDocHours = monthlyRecord?.doctor_hours || 0;
+            const totalNurseHours = monthlyRecord?.nurse_hours || 0;
+            
+            // 計算已使用時數
+            let usedDocHours = 0;
+            let usedNurseHours = 0;
+            
+            shifts.forEach(shift => {
+                if (shift.unit_id !== selectedUnit.id) return;
+                
+                const shiftDate = new Date(shift.shift_date);
+                if (shiftDate.getMonth() === currentMonth - 1 && shiftDate.getFullYear() === currentDate.getFullYear()) {
+                    shift.staff_names.forEach(staffName => {
+                        if (selectedUnit.doctors && selectedUnit.doctors.includes(staffName)) {
+                            usedDocHours += shift.total_hours;
+                        } else if (selectedUnit.nurses && selectedUnit.nurses.includes(staffName)) {
+                            usedNurseHours += shift.total_hours;
+                        }
+                    });
+                }
+            });
+            
+            // 計算剩餘時數
+            const remainingDocHours = Math.max(0, totalDocHours - usedDocHours);
+            const remainingNurseHours = Math.max(0, totalNurseHours - usedNurseHours);
+            
+            // 更新進度條 (顯示剩餘比例)
+            const docProgress = totalDocHours > 0 ? (remainingDocHours / totalDocHours) * 100 : 0;
+            const nurseProgress = totalNurseHours > 0 ? (remainingNurseHours / totalNurseHours) * 100 : 0;
+            
+            document.getElementById('doctorProgress').style.width = `${docProgress}%`;
+            document.getElementById('nurseProgress').style.width = `${nurseProgress}%`;
+            
+            document.getElementById('doctorHoursText').textContent = 
+                `剩餘: ${remainingDocHours}小時 / 總計: ${totalDocHours}小時`;
+            document.getElementById('nurseHoursText').textContent = 
+                `剩餘: ${remainingNurseHours}小時 / 總計: ${totalNurseHours}小時`;
+        }
+
+        function openShiftModal(isEditMode = false) {
+            if (!selectedUnit) {
+                alert('請先選擇事業單位');
+                return;
+            }
+            
+            // 強制取得最新單位資料
+            if (selectedUnit.id) {
+                const latest = units.find(u => u.id === selectedUnit.id);
+                if (latest) selectedUnit = latest;
+            }
+            
+            const modal = document.getElementById('shiftModal');
+            modal.classList.add('active');
+            
+            // 自動填入選中的事業單位
+            document.getElementById('selectedUnitDisplay').value = selectedUnit.name;
+            
+            // 分散型分點選擇
+            const branchGroup = document.getElementById('branchSelectGroup');
+            const branchSelect = document.getElementById('branchSelect');
+            if (selectedUnit.is_distributed && selectedUnit.addresses && selectedUnit.addresses.length > 0) {
+                branchGroup.style.display = 'block';
+                branchSelect.innerHTML = '';
+                selectedUnit.addresses.forEach((branch, idx) => {
+                    const name = branch.name || branch.address || `分點${idx+1}`;
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    branchSelect.appendChild(option);
+                });
+            } else {
+                branchGroup.style.display = 'none';
+            }
+            
+            // 修復：正確設定日期
+            let dateToSet = selectedDate;
+            if (!dateToSet) {
+                dateToSet = new Date();
+            }
+            document.getElementById('shiftDate').value = formatDateLocal(dateToSet);
+            
+            // 清空時間和時數
+            document.getElementById('startTime').value = '';
+            document.getElementById('endTime').value = '';
+            document.getElementById('deductHours').value = '';
+            
+            // 修復：更新人員選擇框
+            updateStaffCheckboxes();
+            
+            // 重置編輯狀態（只有在非編輯模式下才清空）
+            if (!isEditMode) {
+                editingShift = null;
+            }
+        }
+
+        function calculateHours() {
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            
+            if (startTime && endTime) {
+                const start = new Date(`2000-01-01 ${startTime}`);
+                const end = new Date(`2000-01-01 ${endTime}`);
+                let hours = (end - start) / (1000 * 60 * 60);
+                
+                // 處理跨日情況
+                if (hours < 0) {
+                    hours += 24;
+                }
+                
+                document.getElementById('deductHours').value = hours.toFixed(1);
+            }
+        }
+
+        function closeShiftModal() {
+            document.getElementById('shiftModal').classList.remove('active');
+            // 清空編輯狀態
+            editingShift = null;
+            // 清空重複排班設定
+            resetRepeatOptions();
+        }
+
+        function toggleRepeatOptions() {
+            const enableRepeat = document.getElementById('enableRepeat');
+            const repeatOptions = document.getElementById('repeatOptions');
+            repeatOptions.style.display = enableRepeat.checked ? 'block' : 'none';
+        }
+
+        function resetRepeatOptions() {
+            document.getElementById('enableRepeat').checked = false;
+            document.getElementById('repeatType').value = 'daily';
+            document.getElementById('repeatCount').value = '1';
+            document.querySelectorAll('#weeklyOptions input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.getElementById('repeatOptions').style.display = 'none';
+            document.getElementById('weeklyOptions').style.display = 'none';
+        }
+
+        // 監聽重複類型變更
+        document.addEventListener('DOMContentLoaded', function() {
+            const repeatType = document.getElementById('repeatType');
+            if (repeatType) {
+                repeatType.addEventListener('change', function() {
+                    const weeklyOptions = document.getElementById('weeklyOptions');
+                    weeklyOptions.style.display = this.value === 'weekly' ? 'block' : 'none';
+                    
+                    // 當顯示星期選項時，添加事件監聽
+                    if (this.value === 'weekly') {
+                        setTimeout(() => {
+                            document.querySelectorAll('#weeklyOptions input[type="checkbox"]').forEach(cb => {
+                                cb.addEventListener('change', function() {
+                                    const selectedWeekdays = [];
+                                    document.querySelectorAll('#weeklyOptions input[type="checkbox"]:checked').forEach(cb => {
+                                        selectedWeekdays.push(parseInt(cb.value));
+                                    });
+                                    console.log('當前選擇的星期:', selectedWeekdays);
+                                });
+                            });
+                        }, 100);
+                    }
+                });
+            }
+        });
+
+        function updateStaffCheckboxes() {
+            const container = document.getElementById('staffCheckboxes');
+            container.innerHTML = '';
+            
+            if (!selectedUnit) return;
+            
+            let hasStaff = false;
+            
+            // 添加醫生
+            if (selectedUnit.doctors && selectedUnit.doctors.length > 0) {
+                selectedUnit.doctors.forEach(doctor => {
+                    const checkboxDiv = document.createElement('div');
+                    checkboxDiv.className = 'checkbox-item';
+                    checkboxDiv.innerHTML = `
+                        <input type="checkbox" id="doc_${doctor}" value="${doctor}">
+                        <label for="doc_${doctor}">👨‍⚕️ ${doctor}</label>
+                    `;
+                    container.appendChild(checkboxDiv);
+                });
+                hasStaff = true;
+            }
+            
+            // 添加護理師
+            if (selectedUnit.nurses && selectedUnit.nurses.length > 0) {
+                selectedUnit.nurses.forEach(nurse => {
+                    const checkboxDiv = document.createElement('div');
+                    checkboxDiv.className = 'checkbox-item';
+                    checkboxDiv.innerHTML = `
+                        <input type="checkbox" id="nurse_${nurse}" value="${nurse}">
+                        <label for="nurse_${nurse}">👩‍⚕️ ${nurse}</label>
+                    `;
+                    container.appendChild(checkboxDiv);
+                });
+                hasStaff = true;
+            }
+            
+            if (!hasStaff) {
+                container.innerHTML = '<div style="color:#c00;text-align:center;">尚未設定人員，請先到事業單位管理頁面設定</div>';
+            }
+        }
+
+        async function saveShift() {
+            const date = document.getElementById('shiftDate').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const hours = parseFloat(document.getElementById('deductHours').value) || 0;
+            
+            const selectedStaffMembers = [];
+            document.querySelectorAll('#staffCheckboxes input:checked').forEach(checkbox => {
+                selectedStaffMembers.push(checkbox.value);
+            });
+            // 去除重複的人員
+            const uniqueStaffMembers = [...new Set(selectedStaffMembers)];
+
+            // 分點
+            let branch = '';
+            if (selectedUnit.is_distributed) {
+                branch = document.getElementById('branchSelect').value || '';
+            }
+
+            if (!date || !startTime || !endTime || uniqueStaffMembers.length === 0) {
+                alert('請填寫完整資訊');
+                return;
+            }
+
+            if (!selectedUnit) {
+                alert('請選擇事業單位');
+                return;
+            }
+
+            // 檢查排班規則
+            const shiftDate = new Date(date);
+            const weekday = shiftDate.getDay(); // 0=星期日, 1=星期一, ..., 6=星期六
+            
+            if (selectedUnit.restricted_weekdays && selectedUnit.restricted_weekdays.includes(weekday)) {
+                const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+                const confirmResult = confirm(
+                    `⚠️ 排班規則警告\n\n` +
+                    `您選擇的日期 ${date} 是 ${weekdays[weekday]}，` +
+                    `此事業單位已設定禁止在 ${weekdays[weekday]} 排班。\n\n` +
+                    `是否仍要繼續儲存此排班？`
+                );
+                
+                if (!confirmResult) {
+                    return;
+                }
+            }
+
+            try {
+                // 1. 新增或更新排班
+                const shiftData = {
+                    unit_id: selectedUnit.id,
+                    branch_name: branch || null,
+                    shift_date: date,
+                    start_time: startTime,
+                    end_time: endTime,
+                    total_hours: hours
+                };
+
+                let shiftId;
+                if (editingShift && editingShift.id) {
+                    // 更新現有排班
+                    const { error: shiftError } = await supabase
+                        .from('shifts')
+                        .update(shiftData)
+                        .eq('id', editingShift.id);
+                    
+                    if (shiftError) throw shiftError;
+                    shiftId = editingShift.id;
+                } else {
+                    // 檢查是否啟用重複排班
+                    const enableRepeat = document.getElementById('enableRepeat').checked;
+                    
+                    if (enableRepeat) {
+                        // 重複排班邏輯
+                        await createRepeatedShifts(shiftData, uniqueStaffMembers);
+                    } else {
+                        // 單次排班
+                        const { data: newShift, error: shiftError } = await supabase
+                            .from('shifts')
+                            .insert(shiftData)
+                            .select()
+                            .single();
+                        
+                        if (shiftError) throw shiftError;
+                        shiftId = newShift.id;
+                        
+                        // 處理人員關聯
+                        await createShiftStaffRelations(shiftId, uniqueStaffMembers);
+                    }
+                }
+
+                // 2. 處理排班人員關聯（僅在編輯模式或單次排班時）
+                if (editingShift && editingShift.id) {
+                    await createShiftStaffRelations(shiftId, uniqueStaffMembers);
+                }
+
+                // 重新載入排班資料
+                await loadShiftsFromSupabase();
+                updateUnitDashboard();
+                showDayShifts();
+                updateUnitYearlyList();
+                closeShiftModal();
+                
+                // 顯示成功訊息
+                const enableRepeat = document.getElementById('enableRepeat').checked;
+                if (enableRepeat) {
+                    const repeatCount = parseInt(document.getElementById('repeatCount').value) || 1;
+                    alert(`重複排班已成功創建！共創建了 ${repeatCount} 個排班。`);
+                } else {
+                    alert('排班已成功儲存到雲端！');
+                }
+                
+            } catch (error) {
+                console.error('儲存排班失敗:', error);
+                alert('儲存排班失敗：' + error.message);
+            }
+        }
+
+        // 創建排班人員關聯
+        async function createShiftStaffRelations(shiftId, staffMembers) {
+            // 先刪除舊的人員關聯
+            await supabase
+                .from('shift_staff')
+                .delete()
+                .eq('shift_id', shiftId);
+
+            // 新增人員關聯
+            for (const staffName of staffMembers) {
+                // 找到對應的人員ID
+                const { data: staffData, error: staffError } = await supabase
+                    .from('staff')
+                    .select('id')
+                    .eq('unit_id', selectedUnit.id)
+                    .eq('name', staffName)
+                    .single();
+                
+                if (staffError) throw staffError;
+                
+                // 新增排班人員關聯
+                const { error: relationError } = await supabase
+                    .from('shift_staff')
+                    .insert({
+                        shift_id: shiftId,
+                        staff_id: staffData.id
+                    });
+                
+                if (relationError) throw relationError;
+            }
+        }
+
+        // 創建重複排班
+        async function createRepeatedShifts(baseShiftData, staffMembers) {
+            const repeatType = document.getElementById('repeatType').value;
+            const repeatCount = parseInt(document.getElementById('repeatCount').value) || 1;
+            
+            let createdCount = 0;
+            let currentDate = new Date(baseShiftData.shift_date);
+            
+            for (let i = 0; i < repeatCount; i++) {
+                let targetDate = new Date(currentDate);
+                
+                // 根據重複類型計算目標日期
+                if (repeatType === 'daily') {
+                    targetDate.setDate(currentDate.getDate() + i);
+                } else if (repeatType === 'weekly') {
+                    // 檢查是否選擇了星期
+                    const selectedWeekdays = [];
+                    document.querySelectorAll('#weeklyOptions input[type="checkbox"]:checked').forEach(cb => {
+                        selectedWeekdays.push(parseInt(cb.value));
+                    });
+                    
+                    if (selectedWeekdays.length === 0) {
+                        alert('請選擇至少一個星期');
+                        return;
+                    }
+                    
+                    console.log('選擇的星期:', selectedWeekdays);
+                    
+                    // 找到第 i+1 個符合條件的日期
+                    let foundCount = 0;
+                    let daysToAdd = 0;
+                    let targetDateFound = false;
+                    
+                    while (daysToAdd < 365 && !targetDateFound) { // 防止無限循環
+                        const testDate = new Date(baseShiftData.shift_date);
+                        testDate.setDate(new Date(baseShiftData.shift_date).getDate() + daysToAdd);
+                        
+                        if (selectedWeekdays.includes(testDate.getDay())) {
+                            foundCount++;
+                            if (foundCount === i + 1) {
+                                targetDate = testDate;
+                                targetDateFound = true;
+                            }
+                        }
+                        daysToAdd++;
+                    }
+                    
+                    if (!targetDateFound) {
+                        console.warn(`無法找到第 ${i + 1} 個符合條件的日期`);
+                        continue; // 跳過這個重複，繼續下一個
+                    }
+                } else if (repeatType === 'monthly') {
+                    targetDate.setMonth(currentDate.getMonth() + i);
+                }
+                
+                // 創建排班
+                const shiftData = {
+                    ...baseShiftData,
+                    shift_date: formatDateLocal(targetDate)
+                };
+                
+                try {
+                    const { data: newShift, error: shiftError } = await supabase
+                        .from('shifts')
+                        .insert(shiftData)
+                        .select()
+                        .single();
+                    
+                    if (shiftError) throw shiftError;
+                    
+                    // 創建人員關聯
+                    await createShiftStaffRelations(newShift.id, staffMembers);
+                    createdCount++;
+                    
+                } catch (error) {
+                    console.error(`創建第 ${i + 1} 個重複排班失敗:`, error);
+                    // 繼續創建其他排班，不中斷整個過程
+                }
+            }
+            
+            return createdCount;
+        }
+
+        async function editShift(shiftId) {
+            const shift = shifts.find(s => s.id === shiftId);
+            if (!shift) return;
+            
+            editingShift = shift;
+            
+            // 確保選中正確的事業單位
+            const unit = units.find(u => u.id === shift.unit_id);
+            if (unit) {
+                selectedUnit = unit;
+                updateUnitSelection(unit);
+                document.getElementById('selectedUnitInfo').style.display = 'block';
+                document.getElementById('selectedUnitName').textContent = unit.name;
+                await updateUnitDashboard();
+            }
+            
+            // 開啟模態框並填入資料
+            openShiftModal(true);
+            
+            setTimeout(() => {
+                document.getElementById('shiftDate').value = shift.shift_date;
+                document.getElementById('startTime').value = shift.start_time;
+                document.getElementById('endTime').value = shift.end_time;
+                document.getElementById('deductHours').value = shift.total_hours;
+                
+                // 分點
+                if (selectedUnit.is_distributed && shift.branch_name) {
+                    const branchSelect = document.getElementById('branchSelect');
+                    if (branchSelect) branchSelect.value = shift.branch_name;
+                }
+                
+                // 選中對應的人員
+                shift.staff_names.forEach(staffName => {
+                    const checkbox = document.querySelector(`#staffCheckboxes input[value="${staffName}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }, 100);
+        }
+
+        async function deleteShift(shiftId) {
+            if (confirm('確定要刪除此排班嗎？')) {
+                try {
+                    // 由於設定了 CASCADE，刪除排班會自動刪除相關的人員關聯
+                    const { error } = await supabase
+                        .from('shifts')
+                        .delete()
+                        .eq('id', shiftId);
+                    
+                    if (error) throw error;
+                    
+                    // 重新載入排班資料
+                    await loadShiftsFromSupabase();
+                    updateUnitDashboard();
+                    showDayShifts();
+                    updateUnitYearlyList();
+                    
+                    alert('排班已成功刪除！');
+                    
+                } catch (error) {
+                    console.error('刪除排班失敗:', error);
+                    alert('刪除排班失敗：' + error.message);
+                }
+            }
+        }
+
+        async function saveUnit() {
+            const name = document.getElementById('unitName').value.trim();
+            if (!name) {
+                alert('請輸入事業單位名稱');
+                return;
+            }
+            
+            const isDistributed = document.getElementById('isDistributed').value;
+            let addresses = [];
+            
+            if (isDistributed === '否') {
+                const addr = document.getElementById('singleAddress').value.trim();
+                if (addr) addresses.push({address: addr});
+            } else {
+                document.querySelectorAll('#branchesContainer .address-item').forEach(div => {
+                    const [nameInput, addrInput, contactInput] = div.querySelectorAll('input');
+                    if (nameInput.value && addrInput.value) {
+                        addresses.push({
+                            name: nameInput.value.trim(), 
+                            address: addrInput.value.trim(), 
+                            contact: contactInput.value.trim()
+                        });
+                    }
+                });
+            }
+            
+            const doctors = [...new Set(document.getElementById('doctorNames').value
+                .split('\n')
+                .map(n => n.trim())
+                .filter(n => n))];
+            const nurses = [...new Set(document.getElementById('nurseNames').value
+                .split('\n')
+                .map(n => n.trim())
+                .filter(n => n))];
+            
+            // 取得顏色
+            let color = '#667eea';
+            const selectedColor = document.querySelector('.color-option.selected');
+            if (selectedColor) {
+                // 優先使用 data-color 屬性（HEX 格式）
+                const dataColor = selectedColor.getAttribute('data-color');
+                if (dataColor && dataColor.startsWith('#')) {
+                    color = dataColor;
+                } else {
+                    // 備用方案：從 style.backgroundColor 轉換
+                    const bgColor = selectedColor.style.backgroundColor;
+                    if (bgColor.startsWith('rgb')) {
+                        const rgb = bgColor.match(/\d+/g);
+                        if (rgb && rgb.length === 3) {
+                            const r = parseInt(rgb[0]).toString(16).padStart(2, '0');
+                            const g = parseInt(rgb[1]).toString(16).padStart(2, '0');
+                            const b = parseInt(rgb[2]).toString(16).padStart(2, '0');
+                            color = `#${r}${g}${b}`.toUpperCase();
+                        }
+                    } else if (bgColor.startsWith('#')) {
+                        color = bgColor;
+                    }
+                }
+            } else {
+                // 如果沒有選擇顏色，自動選擇一個未使用的顏色
+                const usedColors = units.map(u => u.color);
+                const availableColor = colors.find(c => !usedColors.includes(c));
+                if (availableColor) {
+                    color = availableColor;
+                    console.log('自動選擇未使用的顏色:', availableColor);
+                } else {
+                    console.warn('沒有可用的顏色，使用預設顏色:', color);
+                }
+            }
+            
+            // 補助
+            const hasSubsidy = document.getElementById('subsidyYes').checked;
+            
+            // 排班規則 - 禁止的星期
+            const restrictedWeekdays = [];
+            document.querySelectorAll('#weekdayRestrictions input:checked').forEach(checkbox => {
+                restrictedWeekdays.push(parseInt(checkbox.value));
+            });
+            
+            try {
+                // 1. 新增或更新事業單位
+                const unitData = {
+                    name,
+                    is_distributed: isDistributed === '是',
+                    has_subsidy: hasSubsidy,
+                    color,
+                    restricted_weekdays: restrictedWeekdays
+                };
+                
+                let unitId;
+                let isNewUnit = false;
+                
+                if (selectedUnit && selectedUnit.id) {
+                    // 更新現有事業單位
+                    const { error: unitError } = await supabase
+                        .from('units')
+                        .update(unitData)
+                        .eq('id', selectedUnit.id);
+                    
+                    if (unitError) throw unitError;
+                    unitId = selectedUnit.id;
+                } else {
+                    // 新增事業單位
+                    const { data: newUnit, error: unitError } = await supabase
+                        .from('units')
+                        .insert(unitData)
+                        .select()
+                        .single();
+                    
+                    if (unitError) throw unitError;
+                    unitId = newUnit.id;
+                    isNewUnit = true;
+                }
+                
+                // 2. 處理地址/分點
+                // 先刪除舊的地址
+                await supabase
+                    .from('unit_addresses')
+                    .delete()
+                    .eq('unit_id', unitId);
+                
+                // 新增地址
+                if (addresses.length > 0) {
+                    const addressData = addresses.map(addr => ({
+                        unit_id: unitId,
+                        name: addr.name || null,
+                        address: addr.address,
+                        contact: addr.contact || null
+                    }));
+                    
+                    const { error: addrError } = await supabase
+                        .from('unit_addresses')
+                        .insert(addressData);
+                    
+                    if (addrError) throw addrError;
+                }
+                
+                // 3. 處理人員
+                // 先刪除舊的人員
+                await supabase
+                    .from('staff')
+                    .delete()
+                    .eq('unit_id', unitId);
+                
+                // 新增醫生
+                if (doctors.length > 0) {
+                    const doctorData = doctors.map(name => ({
+                        unit_id: unitId,
+                        name,
+                        staff_type: 'doctor'
+                    }));
+                    
+                    const { error: docError } = await supabase
+                        .from('staff')
+                        .insert(doctorData);
+                    
+                    if (docError) throw docError;
+                }
+                
+                // 新增護理師
+                if (nurses.length > 0) {
+                    const nurseData = nurses.map(name => ({
+                        unit_id: unitId,
+                        name,
+                        staff_type: 'nurse'
+                    }));
+                    
+                    const { error: nurseError } = await supabase
+                        .from('staff')
+                        .insert(nurseData);
+                    
+                    if (nurseError) throw nurseError;
+                }
+                
+                // 4. 處理月度時數
+                // 先刪除舊的月度時數記錄
+                await supabase
+                    .from('monthly_hours')
+                    .delete()
+                    .eq('unit_id', unitId)
+                    .eq('year', 2025);
+                
+                // 新增月度時數記錄
+                const monthlyHoursData = [];
+                for (let month = 1; month <= 12; month++) {
+                    const doctorHours = parseInt(document.getElementById(`docHours${month}`).value) || 0;
+                    const nurseHours = parseInt(document.getElementById(`nurseHours${month}`).value) || 0;
+                    
+                    if (doctorHours > 0 || nurseHours > 0) {
+                        monthlyHoursData.push({
+                            unit_id: unitId,
+                            year: 2025,
+                            month,
+                            doctor_hours: doctorHours,
+                            nurse_hours: nurseHours
+                        });
+                    }
+                }
+                
+                if (monthlyHoursData.length > 0) {
+                    const { error: hoursError } = await supabase
+                        .from('monthly_hours')
+                        .insert(monthlyHoursData);
+                    
+                    if (hoursError) throw hoursError;
+                }
+                
+                // 重新載入資料
+                await loadUnitsFromSupabase();
+                alert('事業單位資料已成功儲存到雲端！');
+                
+                // 如果是新增單位，清空選擇；如果是編輯，更新選中的單位資料
+                if (isNewUnit) {
+                    selectedUnit = null;
+                    document.getElementById('selectedUnitInfo').style.display = 'none';
+                } else {
+                    // 更新選中單位的資料
+                    const updatedUnit = units.find(u => u.id === unitId);
+                    if (updatedUnit) {
+                        selectedUnit = updatedUnit;
+                    }
+                }
+                clearUnitForm();
+                
+            } catch (error) {
+                console.error('儲存失敗:', error);
+                alert('儲存失敗：' + error.message);
+            }
+        }
+
+        function clearUnitForm() {
+            // 清空選中的單位
+            selectedUnit = null;
+            
+            document.getElementById('unitName').value = '';
+            setDistributed('否');
+            document.getElementById('singleAddress').value = '';
+            document.getElementById('branchesContainer').innerHTML = '';
+            document.getElementById('doctorNames').value = '';
+            document.getElementById('nurseNames').value = '';
+            
+            for (let i = 1; i <= 12; i++) {
+                document.getElementById(`docHours${i}`).value = '';
+                document.getElementById(`nurseHours${i}`).value = '';
+            }
+            
+            // 重新初始化顏色選擇器以正確顯示已使用的顏色
+            initColorPalette();
+            
+            // 自動選擇一個未使用的顏色
+            const usedColors = units.map(u => u.color);
+            const availableColor = colors.find(c => !usedColors.includes(c));
+            if (availableColor) {
+                const colorOption = document.querySelector(`[data-color="${availableColor}"]`);
+                if (colorOption) {
+                    colorOption.classList.add('selected');
+                }
+            }
+            
+            setSubsidy('否');
+            
+            // 清空排班規則設定
+            document.querySelectorAll('#weekdayRestrictions input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            toggleAddresses();
+        }
+
+        async function updateUnitYearlyList() {
+            const tbody = document.getElementById('unitYearlyTableBody');
+            tbody.innerHTML = '';
+            
+            for (const unit of units) {
+                try {
+                    // 年度總時數 - 需要從 Supabase 讀取
+                    const { data: yearlyData, error } = await supabase
+                        .from('monthly_hours')
+                        .select('doctor_hours, nurse_hours')
+                        .eq('unit_id', unit.id)
+                        .eq('year', 2025);
+                    
+                    let nurseTotal = 0, docTotal = 0;
+                    
+                    if (error) {
+                        console.error('讀取年度時數失敗:', error);
+                        // 即使讀取失敗，也顯示單位，只是時數為0
+                    } else if (yearlyData) {
+                        nurseTotal = yearlyData.reduce((sum, month) => sum + (month.nurse_hours || 0), 0);
+                        docTotal = yearlyData.reduce((sum, month) => sum + (month.doctor_hours || 0), 0);
+                    }
+                    
+                    // 已排時數
+                    let nurseUsed = 0, docUsed = 0;
+                    shifts.forEach(shift => {
+                        if (shift.unit_id !== unit.id) return;
+                        shift.staff_names.forEach(staffName => {
+                            if ((unit.nurses||[]).includes(staffName)) nurseUsed += shift.total_hours;
+                            if ((unit.doctors||[]).includes(staffName)) docUsed += shift.total_hours;
+                        });
+                    });
+                    
+                    // 剩餘
+                    const nurseRemain = Math.max(0, nurseTotal - nurseUsed);
+                    const docRemain = Math.max(0, docTotal - docUsed);
+                    
+                    // 列
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="padding:10px;">${unit.name}</td>
+                        <td style="text-align:center;">${nurseTotal}</td>
+                        <td style="text-align:center;">${docTotal}</td>
+                        <td style="text-align:center;">${nurseRemain}</td>
+                        <td style="text-align:center;">${docRemain}</td>
+                        <td style="text-align:center;">
+                            <button class='btn btn-primary btn-small' onclick='editUnitById(${unit.id})'>編輯</button>
+                            <button class='btn btn-danger btn-small' onclick='deleteUnit(${unit.id})'>刪除</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                } catch (error) {
+                    console.error('處理單位年度資料失敗:', error);
+                    // 即使處理失敗，也嘗試顯示單位
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="padding:10px;">${unit.name}</td>
+                        <td style="text-align:center;">0</td>
+                        <td style="text-align:center;">0</td>
+                        <td style="text-align:center;">0</td>
+                        <td style="text-align:center;">0</td>
+                        <td style="text-align:center;">
+                            <button class='btn btn-primary btn-small' onclick='editUnitById(${unit.id})'>編輯</button>
+                            <button class='btn btn-danger btn-small' onclick='deleteUnit(${unit.id})'>刪除</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            }
+        }
+
+        async function editUnitById(unitId) {
+            const unit = units.find(u => u.id === unitId);
+            if (!unit) return;
+            
+            // 切換到事業單位管理頁面
+            switchTab('unit');
+            
+            // 帶回資料到表單
+            document.getElementById('unitName').value = unit.name;
+            setDistributed(unit.is_distributed ? '是' : '否');
+            setSubsidy(unit.has_subsidy ? '是' : '否');
+            toggleAddresses();
+            
+            if (!unit.is_distributed) {
+                document.getElementById('singleAddress').value = unit.addresses[0]?.address || '';
+            } else {
+                document.getElementById('branchesContainer').innerHTML = '';
+                (unit.addresses||[]).forEach(branch => addBranch(branch));
+            }
+            
+            document.getElementById('doctorNames').value = (unit.doctors||[]).join('\n');
+            document.getElementById('nurseNames').value = (unit.nurses||[]).join('\n');
+            
+            // 載入月度時數
+            try {
+                const { data: monthlyData, error } = await supabase
+                    .from('monthly_hours')
+                    .select('month, doctor_hours, nurse_hours')
+                    .eq('unit_id', unit.id)
+                    .eq('year', 2025);
+                
+                if (!error && monthlyData) {
+                    for (let i = 1; i <= 12; i++) {
+                        const monthData = monthlyData.find(m => m.month === i);
+                        document.getElementById(`docHours${i}`).value = monthData?.doctor_hours || '';
+                        document.getElementById(`nurseHours${i}`).value = monthData?.nurse_hours || '';
+                    }
+                }
+            } catch (error) {
+                console.error('載入月度時數失敗:', error);
+            }
+            
+            // 顏色
+            document.querySelectorAll('.color-option').forEach(el => {
+                const dataColor = el.getAttribute('data-color');
+                if (dataColor === unit.color) {
+                    el.classList.add('selected');
+                    // 編輯模式下，當前事業單位的顏色不應該顯示為已使用
+                    el.classList.remove('used');
+                    el.title = dataColor;
+                } else {
+                    el.classList.remove('selected');
+                }
+            });
+            
+            // 載入排班規則設定
+            document.querySelectorAll('#weekdayRestrictions input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            if (unit.restricted_weekdays && unit.restricted_weekdays.length > 0) {
+                unit.restricted_weekdays.forEach(weekday => {
+                    const checkbox = document.querySelector(`#weekdayRestrictions input[value="${weekday}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+            
+            selectedUnit = unit;
+        }
+
+        async function deleteUnit(unitId) {
+            if (confirm('確定要刪除此事業單位嗎？相關排班資料也會一併刪除。')) {
+                try {
+                    // 刪除相關排班
+                    const { error: shiftsError } = await supabase
+                        .from('shifts')
+                        .delete()
+                        .eq('unit_id', unitId);
+                    if (shiftsError) throw shiftsError;
+
+                    // 刪除相關人員
+                    const { error: staffError } = await supabase
+                        .from('staff')
+                        .delete()
+                        .eq('unit_id', unitId);
+                    if (staffError) throw staffError;
+
+                    // 刪除相關地址
+                    const { error: addressesError } = await supabase
+                        .from('unit_addresses')
+                        .delete()
+                        .eq('unit_id', unitId);
+                    if (addressesError) throw addressesError;
+
+                    // 刪除月度時數
+                    const { error: monthlyHoursError } = await supabase
+                        .from('monthly_hours')
+                        .delete()
+                        .eq('unit_id', unitId);
+                    if (monthlyHoursError) throw monthlyHoursError;
+
+                    // 刪除單位本身
+                    const { error: unitError } = await supabase
+                        .from('units')
+                        .delete()
+                        .eq('id', unitId);
+                    if (unitError) throw unitError;
+
+                    // 重新載入資料
+                    await loadUnitsFromSupabase();
+                    await loadShiftsFromSupabase();
+                    
+                    // 如果刪除的是當前選中的單位，清空選擇
+                    if (selectedUnit && selectedUnit.id === unitId) {
+                        selectedUnit = null;
+                        document.getElementById('selectedUnitInfo').style.display = 'none';
+                        document.getElementById('dailyShifts').style.display = 'none';
+                    }
+                    
+                    alert('事業單位及相關資料已成功刪除！');
+                    
+                } catch (error) {
+                    console.error('刪除失敗:', error);
+                    alert('刪除失敗：' + error.message);
+                }
+            }
+        }
+
+        async function getUnitMonthRemain(unit, type) {
+            if (!unit || !unit.id) return 0;
+            
+            const monthIdx = currentDate.getMonth() + 1; // 月份從1開始
+            const year = currentDate.getFullYear();
+            
+            // 從 Supabase 讀取月度時數
+            const { data: monthlyData, error } = await supabase
+                .from('monthly_hours')
+                .select('doctor_hours, nurse_hours')
+                .eq('unit_id', unit.id)
+                .eq('year', year)
+                .eq('month', monthIdx);
+            
+            if (error) {
+                console.error('讀取月度時數失敗:', error);
+                return 0;
+            }
+            
+            // 取第一筆資料，如果沒有資料則使用預設值
+            const monthlyRecord = monthlyData && monthlyData.length > 0 ? monthlyData[0] : null;
+            const total = type === 'doctors' ? (monthlyRecord?.doctor_hours || 0) : (monthlyRecord?.nurse_hours || 0);
+            let used = 0;
+            
+            shifts.forEach(shift => {
+                if (shift.unit_id !== unit.id) return;
+                const shiftDate = new Date(shift.shift_date);
+                if (shiftDate.getMonth() === monthIdx - 1 && shiftDate.getFullYear() === year) {
+                    shift.staff_names.forEach(staffName => {
+                        if ((unit[type]||[]).includes(staffName)) used += shift.total_hours;
+                    });
+                }
+            });
+            
+            return Math.max(0, total - used);
+        }
+
+        async function changeMonth(offset) {
+            currentDate.setMonth(currentDate.getMonth() + offset);
+            generateCalendar();
+            await updateUnitDashboard();
+            await updateUnitsList();
+            showDayShifts();
+        }
+
+        async function exportToExcel() {
+            try {
+                if (shifts.length === 0) {
+                    alert('目前沒有排班資料可以匯出');
+                    return;
+                }
+
+                // 顯示載入提示
+                const loadingMsg = '正在準備匯出資料，請稍候...';
+                console.log(loadingMsg);
+
+                // 準備資料結構
+                const exportData = [];
+                const currentYear = currentDate.getFullYear();
+                const currentMonth = currentDate.getMonth() + 1;
+
+                // 按事業單位分組處理資料
+                for (const unit of units) {
+                    const unitShifts = shifts.filter(shift => shift.unit_id === unit.id);
+                    
+                    // 計算當月護理師排班時數
+                    const nurseShifts = unitShifts.filter(shift => {
+                        const shiftDate = new Date(shift.shift_date);
+                        return shiftDate.getFullYear() === currentYear && 
+                               shiftDate.getMonth() + 1 === currentMonth &&
+                               shift.staff_names.some(staffName => 
+                                   unit.nurses && unit.nurses.includes(staffName)
+                               );
+                    });
+                    
+                    const nurseTotalHours = nurseShifts.reduce((total, shift) => {
+                        const nurseHours = shift.staff_names
+                            .filter(staffName => unit.nurses && unit.nurses.includes(staffName))
+                            .length * shift.total_hours;
+                        return total + nurseHours;
+                    }, 0);
+
+                    // 計算當月醫師排班時數
+                    const doctorShifts = unitShifts.filter(shift => {
+                        const shiftDate = new Date(shift.shift_date);
+                        return shiftDate.getFullYear() === currentYear && 
+                               shiftDate.getMonth() + 1 === currentMonth &&
+                               shift.staff_names.some(staffName => 
+                                   unit.doctors && unit.doctors.includes(staffName)
+                               );
+                    });
+                    
+                    const doctorTotalHours = doctorShifts.reduce((total, shift) => {
+                        const doctorHours = shift.staff_names
+                            .filter(staffName => unit.doctors && unit.doctors.includes(staffName))
+                            .length * shift.total_hours;
+                        return total + doctorHours;
+                    }, 0);
+
+                    // 處理護理師排班資料
+                    for (const shift of nurseShifts) {
+                        const nurseNames = shift.staff_names.filter(staffName => 
+                            unit.nurses && unit.nurses.includes(staffName)
+                        );
+                        
+                        for (const nurseName of nurseNames) {
+                            const timeRange = `${formatTimeHHMM(shift.start_time)}-${formatTimeHHMM(shift.end_time)}`;
+                            exportData.push({
+                                事業單位名稱: unit.name,
+                                當月護理師排班時數: nurseTotalHours,
+                                排班日期: shift.shift_date,
+                                時間: timeRange,
+                                護理師名: nurseName,
+                                當月醫師排班時數: '',
+                                醫師排班日期: '',
+                                醫師時間: '',
+                                醫師名: ''
+                            });
+                        }
+                    }
+
+                    // 處理醫師排班資料
+                    for (const shift of doctorShifts) {
+                        const doctorNames = shift.staff_names.filter(staffName => 
+                            unit.doctors && unit.doctors.includes(staffName)
+                        );
+                        
+                        for (const doctorName of doctorNames) {
+                            const timeRange = `${formatTimeHHMM(shift.start_time)}-${formatTimeHHMM(shift.end_time)}`;
+                            exportData.push({
+                                事業單位名稱: unit.name,
+                                當月護理師排班時數: '',
+                                排班日期: '',
+                                時間: '',
+                                護理師名: '',
+                                當月醫師排班時數: doctorTotalHours,
+                                醫師排班日期: shift.shift_date,
+                                醫師時間: timeRange,
+                                醫師名: doctorName
+                            });
+                        }
+                    }
+                }
+
+                // 按日期和時間排序
+                exportData.sort((a, b) => {
+                    const dateA = new Date(a.排班日期 || a.醫師排班日期);
+                    const dateB = new Date(b.排班日期 || b.醫師排班日期);
+                    if (dateA.getTime() !== dateB.getTime()) {
+                        return dateA - dateB;
+                    }
+                    
+                    const timeA = a.時間 || a.醫師時間;
+                    const timeB = b.時間 || b.醫師時間;
+                    if (timeA && timeB) {
+                        return timeA.localeCompare(timeB);
+                    }
+                    return 0;
+                });
+
+                // 創建工作表
+                const ws = XLSX.utils.json_to_sheet(exportData);
+
+                // 設定欄寬
+                const colWidths = [
+                    { wch: 20 }, // 事業單位名稱
+                    { wch: 15 }, // 當月護理師排班時數
+                    { wch: 12 }, // 排班日期
+                    { wch: 15 }, // 時間
+                    { wch: 15 }, // 護理師名
+                    { wch: 15 }, // 當月醫師排班時數
+                    { wch: 12 }, // 醫師排班日期
+                    { wch: 15 }, // 醫師時間
+                    { wch: 15 }  // 醫師名
+                ];
+                ws['!cols'] = colWidths;
+
+                // 創建工作簿
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, '排班資料');
+
+                // 生成檔案名稱
+                const fileName = `醫療排班資料_${currentYear}年${currentMonth}月_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+                // 下載檔案
+                XLSX.writeFile(wb, fileName);
+                
+                console.log('Excel檔案匯出完成');
+                alert(`排班資料已成功匯出為Excel檔案：${fileName}`);
+                
+            } catch (error) {
+                console.error('匯出Excel失敗:', error);
+                alert('匯出Excel失敗：' + error.message);
+            }
+        }
+
+        // 鍵盤快捷鍵
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeShiftModal();
+            }
+        });
+
+        // 點擊模態框外部關閉
+        document.getElementById('shiftModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeShiftModal();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>醫療排班管理系統 - Google Sheets</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-container {
+            max-width: 500px;
+            margin: 100px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .login-container h1 {
+            color: #667eea;
+            margin-bottom: 30px;
+        }
+
+        .login-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+
+        .login-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .login-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #app {
+            display: none;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .user-info {
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .main-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .config-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .config-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .status-message {
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .shifts-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .shifts-table th,
+        .shifts-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .shifts-table th {
+            background: #f8f9fa;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .shifts-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .color-box {
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            display: inline-block;
+            border: 1px solid #ddd;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 登入畫面 -->
+    <div id="loginContainer" class="login-container">
+        <h1>🏥 醫療排班管理系統</h1>
+        <p style="margin-bottom: 30px; color: #666;">使用 Google 帳號登入以存取 Google Sheets 排班資料</p>
+        <button id="loginBtn" class="login-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            使用 Google 帳號登入
+        </button>
+        <div id="loginStatus"></div>
+        
+        <div style="margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 8px; text-align: left;">
+            <h4 style="color: #667eea; margin-bottom: 10px;">⚠️ 首次使用須知</h4>
+            <ol style="color: #666; font-size: 14px; line-height: 1.8; padding-left: 20px;">
+                <li>需要先完成 Google Cloud API 設定</li>
+                <li>參考 <strong>WEB_GOOGLE_SHEETS_SETUP.md</strong> 文件</li>
+                <li>設定完成後填入下方的設定值</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- 主應用程式 -->
+    <div id="app">
+        <div class="header">
+            <div class="header-title">🏥 醫療排班管理系統</div>
+            <div class="user-info">
+                <span id="userName"></span>
+                <button class="logout-btn" onclick="handleLogout()">登出</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Google Sheets 設定 -->
+            <div class="config-section">
+                <h3>📊 Google Sheets 設定</h3>
+                
+                <div class="form-group">
+                    <label for="clientId">Google API 用戶端 ID *</label>
+                    <input type="text" id="clientId" 
+                           placeholder="123456789-abc...apps.googleusercontent.com">
+                    <small style="color: #666;">從 Google Cloud Console 取得</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="sheetId">Google Sheets ID *</label>
+                    <input type="text" id="sheetId" 
+                           placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms">
+                    <small style="color: #666;">從 Google Sheets 網址取得</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="sheetRange">資料範圍</label>
+                    <input type="text" id="sheetRange" value="排班資料!A2:H" 
+                           placeholder="排班資料!A2:H">
+                    <small style="color: #666;">格式：工作表名稱!開始儲存格:結束儲存格</small>
+                </div>
+
+                <button class="btn btn-primary" onclick="saveConfig()">💾 儲存設定</button>
+                <button class="btn btn-success" onclick="testConnection()" style="margin-left: 10px;">
+                    ✅ 測試連線
+                </button>
+                <button class="btn btn-primary" onclick="loadShifts()" style="margin-left: 10px;">
+                    🔄 載入排班資料
+                </button>
+
+                <div id="configStatus"></div>
+            </div>
+
+            <!-- 排班資料顯示 -->
+            <div class="config-section">
+                <h3>📅 排班資料</h3>
+                <div id="shiftsContent">
+                    <p style="color: #666; text-align: center; padding: 20px;">
+                        請先設定 Google Sheets，然後點擊「載入排班資料」
+                    </p>
+                </div>
+            </div>
+
+            <!-- 使用說明 -->
+            <div class="config-section">
+                <h3>📖 使用說明</h3>
+                <ol style="color: #666; line-height: 2;">
+                    <li><strong>設定 Google API</strong>：參考 WEB_GOOGLE_SHEETS_SETUP.md</li>
+                    <li><strong>填入設定值</strong>：用戶端 ID 和 Sheet ID</li>
+                    <li><strong>儲存設定</strong>：點擊「儲存設定」按鈕</li>
+                    <li><strong>測試連線</strong>：確認可以連接到 Google Sheets</li>
+                    <li><strong>載入資料</strong>：點擊「載入排班資料」查看排班</li>
+                    <li><strong>編輯資料</strong>：直接在 Google Sheets 試算表中編輯</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google API -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script>
+        // ==================== 全域變數 ====================
+        let isGapiLoaded = false;
+        let isGisLoaded = false;
+        let tokenClient;
+        let accessToken = null;
+        let gapiInited = false;
+        let gisInited = false;
+
+        // ==================== Google API 載入 ====================
+        
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                apiKey: '', // API Key 可選
+                discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+            });
+            gapiInited = true;
+            maybeEnableButtons();
+        }
+
+        function gisLoaded() {
+            const config = loadConfig();
+            if (config.clientId) {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: config.clientId,
+                    scope: 'https://www.googleapis.com/auth/spreadsheets',
+                    callback: '', // 動態設定
+                });
+                gisInited = true;
+                maybeEnableButtons();
+            }
+        }
+
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                document.getElementById('loginBtn').disabled = false;
+            }
+        }
+
+        // ==================== 設定管理 ====================
+        
+        function loadConfig() {
+            const config = localStorage.getItem('sheetsConfig');
+            if (config) {
+                return JSON.parse(config);
+            }
+            return {
+                clientId: '',
+                sheetId: '',
+                sheetRange: '排班資料!A2:H'
+            };
+        }
+
+        function saveConfig() {
+            const config = {
+                clientId: document.getElementById('clientId').value.trim(),
+                sheetId: document.getElementById('sheetId').value.trim(),
+                sheetRange: document.getElementById('sheetRange').value.trim()
+            };
+
+            if (!config.clientId || !config.sheetId) {
+                showStatus('configStatus', '請填入用戶端 ID 和 Sheet ID', 'error');
+                return;
+            }
+
+            localStorage.setItem('sheetsConfig', JSON.stringify(config));
+            showStatus('configStatus', '✅ 設定已儲存！', 'success');
+
+            // 重新初始化 GIS
+            if (config.clientId) {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: config.clientId,
+                    scope: 'https://www.googleapis.com/auth/spreadsheets',
+                    callback: '', // 動態設定
+                });
+                gisInited = true;
+            }
+        }
+
+        function populateConfig() {
+            const config = loadConfig();
+            document.getElementById('clientId').value = config.clientId || '';
+            document.getElementById('sheetId').value = config.sheetId || '';
+            document.getElementById('sheetRange').value = config.sheetRange || '排班資料!A2:H';
+        }
+
+        // ==================== 認證流程 ====================
+        
+        function handleLogin() {
+            const config = loadConfig();
+            if (!config.clientId) {
+                showStatus('loginStatus', '請先在 Google Cloud Console 設定用戶端 ID', 'error');
+                return;
+            }
+
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    showStatus('loginStatus', '登入失敗：' + resp.error, 'error');
+                    throw (resp);
+                }
+                accessToken = resp.access_token;
+                
+                // 取得使用者資訊
+                await loadUserInfo();
+                
+                // 顯示主應用
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+                
+                // 載入設定
+                populateConfig();
+            };
+
+            if (accessToken === null) {
+                // 請求 access token
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                // 已有 token，跳過請求
+                tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+
+        async function loadUserInfo() {
+            try {
+                const response = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`
+                    }
+                });
+                const userInfo = await response.json();
+                document.getElementById('userName').textContent = userInfo.email || '使用者';
+            } catch (error) {
+                console.error('載入使用者資訊失敗', error);
+                document.getElementById('userName').textContent = '使用者';
+            }
+        }
+
+        function handleLogout() {
+            if (accessToken) {
+                google.accounts.oauth2.revoke(accessToken);
+                accessToken = null;
+            }
+            document.getElementById('loginContainer').style.display = 'block';
+            document.getElementById('app').style.display = 'none';
+            document.getElementById('shiftsContent').innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">請先設定 Google Sheets，然後點擊「載入排班資料」</p>';
+        }
+
+        // ==================== Google Sheets 操作 ====================
+        
+        async function testConnection() {
+            const config = loadConfig();
+            
+            if (!config.sheetId) {
+                showStatus('configStatus', '請先填入 Sheet ID', 'error');
+                return;
+            }
+
+            if (!accessToken) {
+                showStatus('configStatus', '請先登入 Google 帳號', 'error');
+                return;
+            }
+
+            showStatus('configStatus', '⏳ 測試連線中...', 'info');
+
+            try {
+                const response = await gapi.client.sheets.spreadsheets.get({
+                    spreadsheetId: config.sheetId
+                });
+                
+                const sheetName = response.result.properties.title;
+                showStatus('configStatus', `✅ 連線成功！試算表：${sheetName}`, 'success');
+            } catch (error) {
+                showStatus('configStatus', '❌ 連線失敗：' + error.message, 'error');
+                console.error('連線錯誤', error);
+            }
+        }
+
+        async function loadShifts() {
+            const config = loadConfig();
+            
+            if (!config.sheetId || !config.sheetRange) {
+                showStatus('configStatus', '請先設定 Sheet ID 和資料範圍', 'error');
+                return;
+            }
+
+            if (!accessToken) {
+                showStatus('configStatus', '請先登入 Google 帳號', 'error');
+                return;
+            }
+
+            const shiftsContent = document.getElementById('shiftsContent');
+            shiftsContent.innerHTML = '<div class="loading"><div class="spinner"></div><p>載入排班資料中...</p></div>';
+
+            try {
+                const response = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: config.sheetId,
+                    range: config.sheetRange,
+                });
+
+                const values = response.result.values;
+                
+                if (!values || values.length === 0) {
+                    shiftsContent.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">沒有找到排班資料</p>';
+                    return;
+                }
+
+                displayShifts(values);
+                showStatus('configStatus', `✅ 成功載入 ${values.length} 筆排班資料`, 'success');
+            } catch (error) {
+                shiftsContent.innerHTML = '<p style="color: #721c24; text-align: center; padding: 20px;">❌ 載入失敗：' + error.message + '</p>';
+                showStatus('configStatus', '❌ 載入失敗：' + error.message, 'error');
+                console.error('載入錯誤', error);
+            }
+        }
+
+        function displayShifts(shifts) {
+            const shiftsContent = document.getElementById('shiftsContent');
+            
+            let html = `
+                <table class="shifts-table">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>時間</th>
+                            <th>事業單位</th>
+                            <th>人員</th>
+                            <th>地點</th>
+                            <th>顏色</th>
+                            <th>備註</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            shifts.forEach(shift => {
+                const [date, startTime, endTime, unit, staff, location, color, note] = shift;
+                html += `
+                    <tr>
+                        <td>${date || ''}</td>
+                        <td>${startTime || ''} - ${endTime || ''}</td>
+                        <td>${unit || ''}</td>
+                        <td>${staff || ''}</td>
+                        <td>${location || ''}</td>
+                        <td><span class="color-box" style="background: ${color || '#667eea'}"></span></td>
+                        <td>${note || ''}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+                <p style="margin-top: 15px; color: #666; text-align: center;">
+                    💡 在 Google Sheets 中編輯資料後，點擊「載入排班資料」更新
+                </p>
+            `;
+
+            shiftsContent.innerHTML = html;
+        }
+
+        // ==================== 工具函數 ====================
+        
+        function showStatus(elementId, message, type) {
+            const statusElement = document.getElementById(elementId);
+            statusElement.innerHTML = `<div class="status-message status-${type}">${message}</div>`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusElement.innerHTML = '';
+                }, 5000);
+            }
+        }
+
+        // ==================== 初始化 ====================
+        
+        window.onload = function() {
+            // 設定登入按鈕
+            document.getElementById('loginBtn').onclick = handleLogin;
+            
+            // 載入 Google API
+            gapiLoaded();
+            
+            // 載入 GIS
+            const script = document.createElement('script');
+            script.src = 'https://accounts.google.com/gsi/client';
+            script.onload = gisLoaded;
+            document.head.appendChild(script);
+
+            // 檢查是否有儲存的設定
+            const config = loadConfig();
+            if (!config.clientId) {
+                showStatus('loginStatus', 
+                    '<div class="status-message status-info" style="margin-top: 20px; text-align: left;">' +
+                    '<strong>🔧 開始前請先完成以下步驟：</strong><br><br>' +
+                    '1️⃣ 參考 <strong>WEB_GOOGLE_SHEETS_SETUP.md</strong> 設定 Google Cloud API<br>' +
+                    '2️⃣ 取得「用戶端 ID」和「Sheet ID」<br>' +
+                    '3️⃣ 登入後填入設定值<br>' +
+                    '</div>', 
+                    'info'
+                );
+            }
+        };
+    </script>
+</body>
+</html>
+

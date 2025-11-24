@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Name -->
+    <string name="app_name">醫療行事曆</string>
+    
+    <!-- Navigation -->
+    <string name="calendar_title">行事曆</string>
+    <string name="projects_title">專案</string>
+    <string name="menstrual_cycle_title">月經週期</string>
+    <string name="finance_title">記帳</string>
+    <string name="settings_title">設定</string>
+    
+    <!-- Common Actions -->
+    <string name="add">新增</string>
+    <string name="add_event">新增事件</string>
+    <string name="edit">編輯</string>
+    <string name="delete">刪除</string>
+    <string name="save">儲存</string>
+    <string name="cancel">取消</string>
+    <string name="ok">確定</string>
+    <string name="back">返回</string>
+    <string name="refresh">重新整理</string>
+    <string name="sync">同步</string>
+    
+    <!-- Calendar Types -->
+    <string name="medical_shifts">醫療排班</string>
+    <string name="personal_calendar">個人行事曆</string>
+    <string name="google_calendar">Google 行事曆</string>
+    
+    <!-- Sync & Settings -->
+    <string name="sync_calendars">同步日曆</string>
+    <string name="auto_sync">自動同步</string>
+    <string name="manual_sync">手動同步</string>
+    <string name="sync_now">立即同步</string>
+    <string name="last_sync">上次同步</string>
+    <string name="syncing">同步中...</string>
+    <string name="sync_success">同步成功</string>
+    <string name="sync_failed">同步失敗</string>
+    
+    <!-- Google Account -->
+    <string name="google_sign_in">登入 Google 帳號</string>
+    <string name="google_sign_out">登出</string>
+    <string name="google_account">Google 帳號</string>
+    <string name="not_signed_in">未登入</string>
+    <string name="sign_in_required">請先登入 Google 帳號</string>
+    
+    <!-- Google Sheets -->
+    <string name="google_sheets_setup">Google Sheets 設定</string>
+    <string name="sheet_id">Sheet ID</string>
+    <string name="sheet_range">資料範圍</string>
+    <string name="test_connection">測試連線</string>
+    <string name="connection_success">連線成功</string>
+    <string name="connection_failed">連線失敗</string>
+    
+    <!-- Display Settings -->
+    <string name="display_settings">顯示設定</string>
+    <string name="show_week_numbers">顯示週數</string>
+    <string name="start_week_on_monday">週一為第一天</string>
+    <string name="show_lunar_date">顯示農曆日期</string>
+    
+    <!-- Event Details -->
+    <string name="event_title">事件標題</string>
+    <string name="event_description">事件描述</string>
+    <string name="event_location">地點</string>
+    <string name="start_time">開始時間</string>
+    <string name="end_time">結束時間</string>
+    <string name="all_day">全天</string>
+    <string name="color">顏色</string>
+    
+    <!-- Time & Date -->
+    <string name="today">今天</string>
+    <string name="tomorrow">明天</string>
+    <string name="yesterday">昨天</string>
+    <string name="this_week">本週</string>
+    <string name="this_month">本月</string>
+    
+    <!-- Error Messages -->
+    <string name="error_occurred">發生錯誤</string>
+    <string name="error_network">網路連線錯誤</string>
+    <string name="error_permission">權限不足</string>
+    <string name="error_loading">載入失敗</string>
+    <string name="error_saving">儲存失敗</string>
+    
+    <!-- Notifications -->
+    <string name="notification_title">醫療排班提醒</string>
+    <string name="notification_content">您有即將到來的排班</string>
+    
+    <!-- Widget -->
+    <string name="widget_name">醫療行事曆小工具</string>
+    <string name="widget_description">顯示近期排班和行事曆事件</string>
+    <string name="configure_widget">設定小工具</string>
+    
+    <!-- About -->
+    <string name="about">關於</string>
+    <string name="version">版本</string>
+    <string name="app_version">1.0.0</string>
+    
+    <!-- Permissions -->
+    <string name="permission_calendar_rationale">需要日曆權限以同步排班資料</string>
+    <string name="permission_notification_rationale">需要通知權限以提醒您即將到來的排班</string>
+    
+    <!-- Empty States -->
+    <string name="no_events">無事件</string>
+    <string name="no_shifts">無排班資料</string>
+    <string name="no_data">暫無資料</string>
+</resources> 
