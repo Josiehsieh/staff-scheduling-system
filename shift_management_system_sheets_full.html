@@ -558,8 +558,25 @@
                 <div style="margin-bottom: 20px;">
                     <button class="btn btn-success" onclick="showAddShiftForm()">➕ 新增排班</button>
                     <button class="btn btn-primary" onclick="loadAllShifts()" style="margin-left: 10px;">🔄 重新載入</button>
-                    <button class="btn btn-primary" onclick="exportToExcel()" style="margin-left: 10px;">📥 匯出 Excel</button>
                     <button class="btn btn-success" onclick="batchUploadToCalendar()" style="margin-left: 10px;">📅 批量上傳行事曆</button>
+                </div>
+
+                <!-- 匯出 Excel 區域 -->
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <h4>📥 匯出 Excel</h4>
+                    <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                        <div class="form-group" style="margin: 0;">
+                            <label>開始日期（選填）</label>
+                            <input type="date" id="exportStartDate" style="padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label>結束日期（選填）</label>
+                            <input type="date" id="exportEndDate" style="padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                        </div>
+                        <button class="btn btn-primary" onclick="exportToExcel()">📥 匯出 Excel</button>
+                        <button class="btn btn-secondary" onclick="clearExportDateRange()" style="background: #6c757d;">🔄 清除日期</button>
+                    </div>
+                    <small style="color: #666; margin-top: 10px; display: block;">💡 若未選擇日期範圍，將匯出所有排班資料</small>
                 </div>
 
                 <!-- 新增/編輯表單 -->
@@ -2472,12 +2489,38 @@
                 return;
             }
 
+            // 獲取日期範圍
+            const startDate = document.getElementById('exportStartDate').value;
+            const endDate = document.getElementById('exportEndDate').value;
+
+            // 篩選資料
+            let shiftsToExport = allShifts;
+            let dateRangeText = '';
+
+            if (startDate && endDate) {
+                shiftsToExport = allShifts.filter(shift => {
+                    return shift.date >= startDate && shift.date <= endDate;
+                });
+                dateRangeText = `_${startDate}_至_${endDate}`;
+                
+                if (shiftsToExport.length === 0) {
+                    alert('所選日期範圍內沒有排班資料');
+                    return;
+                }
+            } else if (startDate) {
+                shiftsToExport = allShifts.filter(shift => shift.date >= startDate);
+                dateRangeText = `_${startDate}_之後`;
+            } else if (endDate) {
+                shiftsToExport = allShifts.filter(shift => shift.date <= endDate);
+                dateRangeText = `_${endDate}_之前`;
+            }
+
             // 準備資料
             const data = [
                 ['日期', '開始時間', '結束時間', '事業單位', '人員名單', '地點', '顏色', '備註']
             ];
 
-            allShifts.forEach(shift => {
+            shiftsToExport.forEach(shift => {
                 data.push([
                     shift.date,
                     shift.startTime,
@@ -2509,8 +2552,16 @@
             XLSX.utils.book_append_sheet(wb, ws, '排班資料');
 
             // 下載
-            const fileName = `排班資料_${new Date().toISOString().split('T')[0]}.xlsx`;
+            const fileName = `排班資料${dateRangeText}_${new Date().toISOString().split('T')[0]}.xlsx`;
             XLSX.writeFile(wb, fileName);
+            
+            // 顯示成功訊息
+            alert(`成功匯出 ${shiftsToExport.length} 筆排班資料！`);
+        }
+
+        function clearExportDateRange() {
+            document.getElementById('exportStartDate').value = '';
+            document.getElementById('exportEndDate').value = '';
         }
 
         // ==================== 統計報表 ====================
