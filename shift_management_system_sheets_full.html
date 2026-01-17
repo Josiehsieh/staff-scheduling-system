@@ -2661,25 +2661,59 @@
         }
 
         async function deleteShift(index) {
-            if (!confirm('確定要刪除這個排班嗎？')) return;
-            
-            // 取得該排班的行事曆事件ID
+            // 取得該排班資訊
             const shift = allShifts.find(s => s.index === index);
-            const eventId = shift ? shift.eventId : null;
             
-            // 如果有事件ID且啟用自動同步，先刪除行事曆事件
+            if (!shift) {
+                alert('找不到該排班資料');
+                return;
+            }
+            
+            // 準備確認訊息
+            let confirmMessage = `確定要刪除這個排班嗎？\n\n`;
+            confirmMessage += `日期：${shift.date}\n`;
+            confirmMessage += `時間：${shift.startTime} - ${shift.endTime}\n`;
+            confirmMessage += `單位：${shift.unit}\n`;
+            confirmMessage += `人員：${shift.staff}\n`;
+            
+            // 如果有行事曆事件，提示將發送取消通知
+            const eventId = shift.eventId;
             if (eventId && isAutoSyncEnabled()) {
-                console.log('🗑️ 同步刪除行事曆事件：', eventId);
-                await autoDeleteCalendarEvent(eventId);
+                // 檢查是否有設定郵件的人員
+                const staffList = shift.staff.split(',').map(s => s.trim());
+                const hasEmail = staffList.some(name => staffEmailMap[name]);
+                
+                if (hasEmail) {
+                    confirmMessage += `\n⚠️ 注意：將自動發送取消通知給已設定郵件的醫師`;
+                }
+            }
+            
+            if (!confirm(confirmMessage)) return;
+            
+            // 如果有事件ID且啟用自動同步，先刪除行事曆事件並發送取消通知
+            let deleteResult = { success: false, attendeeCount: 0 };
+            if (eventId && isAutoSyncEnabled()) {
+                console.log('🗑️ 同步刪除行事曆事件並發送取消通知：', eventId);
+                deleteResult = await autoDeleteCalendarEvent(eventId, true);
             }
             
             // 從 Google Sheets 刪除排班
             const success = await deleteShiftFromSheet(index);
             if (success) {
-                alert('刪除成功！' + (eventId && isAutoSyncEnabled() ? '\n已同步刪除行事曆事件' : ''));
+                let successMessage = '✅ 刪除成功！';
+                
+                if (eventId && isAutoSyncEnabled()) {
+                    successMessage += '\n\n📅 已同步刪除行事曆事件';
+                    
+                    if (deleteResult.success && deleteResult.attendeeCount > 0) {
+                        successMessage += `\n📧 已發送取消通知給 ${deleteResult.attendeeCount} 位參與者`;
+                    }
+                }
+                
+                alert(successMessage);
                 await loadAllShifts();
             } else {
-                alert('刪除失敗，請重試');
+                alert('❌ 刪除失敗，請重試');
             }
         }
 
@@ -3428,22 +3462,46 @@
         }
         
         // 自動刪除行事曆事件
-        async function autoDeleteCalendarEvent(eventId) {
+        async function autoDeleteCalendarEvent(eventId, sendCancellation = true) {
             if (!isAutoSyncEnabled() || !eventId) {
-                return;
+                return { success: false, attendeeCount: 0 };
             }
             
             console.log('🗑️ 自動刪除行事曆事件：', eventId);
             
             try {
+                // 先獲取事件資訊以取得參與者列表
+                let attendeeCount = 0;
+                try {
+                    const eventInfo = await gapi.client.calendar.events.get({
+                        calendarId: 'primary',
+                        eventId: eventId
+                    });
+                    
+                    attendeeCount = eventInfo.result.attendees ? eventInfo.result.attendees.length : 0;
+                    console.log(`📧 事件有 ${attendeeCount} 位參與者`);
+                } catch (getError) {
+                    console.warn('⚠️ 無法取得事件資訊：', getError);
+                }
+                
+                // 刪除事件並發送取消通知
                 await gapi.client.calendar.events.delete({
                     calendarId: 'primary',
-                    eventId: eventId
+                    eventId: eventId,
+                    sendUpdates: sendCancellation ? 'all' : 'none' // 🔔 發送取消通知給所有參與者
                 });
+                
                 console.log('✅ 行事曆事件已刪除');
+                
+                if (sendCancellation && attendeeCount > 0) {
+                    console.log(`📧 已發送取消通知給 ${attendeeCount} 位參與者`);
+                }
+                
+                return { success: true, attendeeCount: attendeeCount };
             } catch (error) {
                 console.error('❌ 刪除行事曆事件失敗：', error);
                 // 即使失敗也不阻斷刪除排班
+                return { success: false, attendeeCount: 0 };
             }
         }
         
