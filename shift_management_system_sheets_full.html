@@ -1203,12 +1203,35 @@
                     </div>
                 </div>
 
+                <!-- 行事曆同步診斷工具 -->
+                <div style="margin-top: 30px; background: #fff3e0; padding: 20px; border-radius: 10px; border: 2px solid #ff9800;">
+                    <h3>🔍 行事曆同步診斷工具</h3>
+                    
+                    <div style="padding: 15px; background: white; border-radius: 8px; margin-bottom: 15px;">
+                        <strong style="color: #f57c00; font-size: 16px;">🎯 功能說明</strong>
+                        <p style="margin: 10px 0 5px 0; color: #555;">
+                            此工具可以幫您診斷排班與行事曆同步的狀況：
+                        </p>
+                        <ul style="margin: 5px 0 0 20px; color: #666;">
+                            <li>✅ 檢查有多少排班已同步到行事曆</li>
+                            <li>✅ 檢查有多少舊排班沒有行事曆關聯</li>
+                            <li>✅ 顯示哪些排班可能無法同步刪除</li>
+                        </ul>
+                    </div>
+
+                    <button class="btn btn-warning" onclick="diagnoseSyncStatus()" style="background: #ff9800; border: none;">
+                        🔍 開始診斷
+                    </button>
+                    
+                    <div id="diagnosisResult" style="margin-top: 15px; display: none;"></div>
+                </div>
+
                 <div style="margin-top: 30px; background: #f8f9fa; padding: 20px; border-radius: 10px;">
                     <h3>關於系統</h3>
-                    <p><strong>版本：</strong>4.1.0 (郵件通知增強版)</p>
+                    <p><strong>版本：</strong>4.2.0 (行事曆同步增強版)</p>
                     <p><strong>資料來源：</strong>Google Sheets</p>
                     <p><strong>假日API：</strong>Nager.Date (免費)</p>
-                    <p><strong>新增功能：</strong>自動郵件通知、行事曆邀請</p>
+                    <p><strong>新增功能：</strong>同步診斷工具、完善刪除通知</p>
                     <p><strong>更新日期：</strong>2026-01-17</p>
                 </div>
             </div>
@@ -2708,19 +2731,35 @@
             if (eventId && isAutoSyncEnabled()) {
                 console.log('🗑️ 同步刪除行事曆事件並發送取消通知：', eventId);
                 deleteResult = await autoDeleteCalendarEvent(eventId, true);
+                
+                // 詳細日誌
+                if (deleteResult.success) {
+                    console.log('✅ 行事曆事件刪除成功');
+                } else {
+                    console.warn('⚠️ 行事曆事件刪除失敗或事件不存在');
+                }
+            } else if (!eventId && isAutoSyncEnabled()) {
+                console.warn('⚠️ 此排班沒有行事曆事件ID（可能是舊資料）');
             }
             
             // 從 Google Sheets 刪除排班
             const success = await deleteShiftFromSheet(index);
             if (success) {
-                let successMessage = '✅ 刪除成功！';
+                let successMessage = '✅ 排班資料已刪除！';
                 
+                // 根據實際刪除結果顯示訊息
                 if (eventId && isAutoSyncEnabled()) {
-                    successMessage += '\n\n📅 已同步刪除行事曆事件';
-                    
-                    if (deleteResult.success && deleteResult.attendeeCount > 0) {
-                        successMessage += `\n📧 已發送取消通知給 ${deleteResult.attendeeCount} 位參與者`;
+                    if (deleteResult.success) {
+                        successMessage += '\n\n📅 已同步刪除行事曆事件';
+                        
+                        if (deleteResult.attendeeCount > 0) {
+                            successMessage += `\n📧 已發送取消通知給 ${deleteResult.attendeeCount} 位參與者`;
+                        }
+                    } else {
+                        successMessage += '\n\n⚠️ 行事曆事件刪除失敗（事件可能已被手動刪除）';
                     }
+                } else if (!eventId && isAutoSyncEnabled()) {
+                    successMessage += '\n\n⚠️ 此排班沒有關聯的行事曆事件（舊資料）';
                 }
                 
                 alert(successMessage);
@@ -3413,6 +3452,153 @@
         // 檢查是否啟用自動同步
         function isAutoSyncEnabled() {
             return localStorage.getItem('autoSyncCalendar') === 'true';
+        }
+        
+        // 診斷排班同步狀態
+        async function diagnoseSyncStatus() {
+            const resultDiv = document.getElementById('diagnosisResult');
+            
+            if (!allShifts || allShifts.length === 0) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <div style="padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ff9800;">
+                        <strong>⚠️ 無法診斷</strong>
+                        <p style="margin: 10px 0 0 0; color: #666;">
+                            沒有載入排班資料。請先登入並載入排班資料。
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `
+                <div style="padding: 15px; background: white; border-radius: 8px; text-align: center;">
+                    <strong>🔍 正在診斷...</strong>
+                    <p style="margin: 10px 0 0 0; color: #666;">請稍候</p>
+                </div>
+            `;
+            
+            // 統計資料
+            const totalShifts = allShifts.length;
+            const shiftsWithEventId = allShifts.filter(s => s.eventId && s.eventId.trim() !== '').length;
+            const shiftsWithoutEventId = totalShifts - shiftsWithEventId;
+            
+            // 檢查自動同步狀態
+            const autoSyncEnabled = isAutoSyncEnabled();
+            
+            // 找出最近的沒有eventId的排班（未來的日期）
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const futureShiftsWithoutEventId = allShifts.filter(s => {
+                if (!s.eventId || s.eventId.trim() === '') {
+                    const shiftDate = new Date(s.date);
+                    return shiftDate >= today;
+                }
+                return false;
+            });
+            
+            // 生成診斷報告
+            let html = `
+                <div style="padding: 20px; background: white; border-radius: 8px;">
+                    <strong style="color: #1976d2; font-size: 18px;">📊 診斷報告</strong>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
+                                <div style="font-size: 32px; font-weight: bold; color: #1976d2;">${totalShifts}</div>
+                                <div style="color: #666; margin-top: 5px;">總排班數</div>
+                            </div>
+                            <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
+                                <div style="font-size: 32px; font-weight: bold; color: #4caf50;">${shiftsWithEventId}</div>
+                                <div style="color: #666; margin-top: 5px;">已同步行事曆</div>
+                            </div>
+                            <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
+                                <div style="font-size: 32px; font-weight: bold; color: #ff9800;">${shiftsWithoutEventId}</div>
+                                <div style="color: #666; margin-top: 5px;">未同步（舊資料）</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: ${autoSyncEnabled ? '#e8f5e9' : '#ffebee'}; border-radius: 8px; border-left: 4px solid ${autoSyncEnabled ? '#4caf50' : '#f44336'};">
+                        <strong style="color: ${autoSyncEnabled ? '#2e7d32' : '#c62828'};">
+                            ${autoSyncEnabled ? '✅ 自動同步已啟用' : '❌ 自動同步已關閉'}
+                        </strong>
+                        <p style="margin: 10px 0 0 0; color: #666;">
+                            ${autoSyncEnabled 
+                                ? '新增的排班會自動同步到行事曆' 
+                                : '請在設定中啟用「自動同步到 Google 行事曆」功能'}
+                        </p>
+                    </div>
+            `;
+            
+            // 如果有未同步的未來排班，顯示警告
+            if (futureShiftsWithoutEventId.length > 0) {
+                html += `
+                    <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ff9800;">
+                        <strong style="color: #f57c00;">⚠️ 發現 ${futureShiftsWithoutEventId.length} 個未來排班沒有同步</strong>
+                        <p style="margin: 10px 0 0 0; color: #666;">
+                            這些排班在刪除時<strong>不會</strong>同步刪除行事曆事件。
+                        </p>
+                        <details style="margin-top: 10px;">
+                            <summary style="cursor: pointer; color: #1976d2;">查看詳細列表 ▼</summary>
+                            <div style="margin-top: 10px; max-height: 200px; overflow-y: auto; background: white; padding: 10px; border-radius: 5px;">
+                `;
+                
+                futureShiftsWithoutEventId.slice(0, 20).forEach(shift => {
+                    html += `
+                        <div style="padding: 8px; border-bottom: 1px solid #eee; font-size: 14px;">
+                            📅 ${shift.date} ${shift.startTime}-${shift.endTime} | ${shift.unit} | ${shift.staff}
+                        </div>
+                    `;
+                });
+                
+                if (futureShiftsWithoutEventId.length > 20) {
+                    html += `<div style="padding: 8px; color: #888; font-size: 14px;">... 還有 ${futureShiftsWithoutEventId.length - 20} 個</div>`;
+                }
+                
+                html += `
+                            </div>
+                        </details>
+                    </div>
+                `;
+            }
+            
+            // 建議
+            html += `
+                <div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+                    <strong style="color: #1976d2;">💡 建議</strong>
+                    <ul style="margin: 10px 0 0 20px; color: #666; line-height: 1.8;">
+            `;
+            
+            if (!autoSyncEnabled) {
+                html += `<li><strong>啟用自動同步：</strong>在設定中開啟「自動同步到 Google 行事曆」</li>`;
+            }
+            
+            if (shiftsWithoutEventId > 0) {
+                html += `
+                    <li><strong>舊排班處理：</strong>${shiftsWithoutEventId} 個舊排班沒有行事曆關聯
+                        <ul style="margin-top: 5px;">
+                            <li>這些排班在刪除時<strong>不會</strong>自動刪除行事曆事件</li>
+                            <li>需要手動在 Google 行事曆中刪除</li>
+                            <li>或重新編輯並儲存這些排班以建立關聯</li>
+                        </ul>
+                    </li>
+                `;
+            }
+            
+            if (shiftsWithEventId > 0) {
+                html += `<li><strong>✅ 良好：</strong>${shiftsWithEventId} 個排班已正確同步，刪除時會自動移除行事曆事件</li>`;
+            }
+            
+            html += `
+                    </ul>
+                </div>
+            `;
+            
+            html += `</div>`;
+            
+            resultDiv.innerHTML = html;
         }
         
         // 自動同步排班到行事曆（包含錯誤處理）
