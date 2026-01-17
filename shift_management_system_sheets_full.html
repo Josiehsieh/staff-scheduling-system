@@ -531,7 +531,7 @@
                 <button class="nav-tab" onclick="switchTab('manage')">✏️ 排班管理</button>
                 <button class="nav-tab" onclick="switchTab('stats')">📊 統計報表</button>
                 <button class="nav-tab" onclick="switchTab('units')">🏢 事業單位</button>
-                <button class="nav-tab" onclick="switchTab('staff')">👥 人員管理</button>
+                <button class="nav-tab" onclick="switchTab('staff')">📧 醫師郵件</button>
                 <button class="nav-tab" onclick="switchTab('settings')">⚙️ 設定</button>
             </div>
 
@@ -978,15 +978,71 @@
                 </div>
             </div>
 
-            <!-- 人員管理頁籤 -->
+            <!-- 醫師郵件設置頁籤 -->
             <div id="staffTab" class="tab-content">
-                <h2>👥 人員管理</h2>
-                <p style="color: #666; margin-bottom: 20px;">在 Google Sheets 中直接管理人員資料</p>
+                <h2>📧 醫師郵件設置</h2>
+                <p style="color: #666; margin-bottom: 20px;">管理醫師郵件資料，用於自動發送排班通知</p>
                 
-                <div class="status-message status-info">
-                    <strong>📝 管理方式</strong><br>
-                    請直接在 Google Sheets 的「人員名單」工作表中新增或編輯資料。<br>
-                    格式：姓名 | 職稱 | 聯絡電話 | Email
+                <!-- 功能說明 -->
+                <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #2196f3;">
+                    <strong style="color: #1976d2;">💡 功能說明</strong>
+                    <ul style="margin: 10px 0 0 20px; color: #666; line-height: 1.8;">
+                        <li>設定醫師郵件後，建立排班時會自動發送行事曆邀請</li>
+                        <li>醫師會收到郵件通知，可直接接受或拒絕排班</li>
+                        <li>姓名必須與「事業單位詳細」工作表中的名稱完全一致</li>
+                        <li>郵件地址必須是有效的 Gmail 或 Google Workspace 帳號</li>
+                    </ul>
+                </div>
+
+                <!-- 操作按鈕 -->
+                <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="loadStaffEmailsManual()">🔄 重新載入郵件資料</button>
+                    <button class="btn btn-success" onclick="openGoogleSheetEmailTab()">📝 在 Google Sheets 中編輯</button>
+                    <button class="btn btn-info" onclick="showEmailSetupGuide()">📖 設定指南</button>
+                </div>
+
+                <!-- 狀態訊息 -->
+                <div id="staffEmailStatus" style="margin-bottom: 20px;"></div>
+
+                <!-- 郵件資料顯示區域 -->
+                <div id="staffEmailDisplay" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <h3 style="margin-top: 0; color: #1976d2;">📋 目前郵件設定</h3>
+                    <div id="staffEmailList">
+                        <p style="text-align: center; color: #999;">載入中...</p>
+                    </div>
+                </div>
+
+                <!-- 設定指南（預設隱藏）-->
+                <div id="emailSetupGuide" style="display: none; margin-top: 20px; background: #fff3cd; padding: 20px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                    <h3 style="margin-top: 0; color: #f57c00;">📖 設定指南</h3>
+                    
+                    <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <strong style="color: #1976d2;">步驟 1：建立工作表</strong>
+                        <ol style="margin: 10px 0 0 20px; color: #666; line-height: 1.8;">
+                            <li>在 Google Sheets 中建立「<strong>醫師郵件</strong>」工作表</li>
+                            <li>設定第一列標題：<code style="background: #f5f5f5; padding: 2px 6px;">姓名 | Email | 職稱 | 備註</code></li>
+                        </ol>
+                    </div>
+
+                    <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <strong style="color: #1976d2;">步驟 2：填入資料</strong>
+                        <div style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 5px; font-family: monospace; font-size: 13px;">
+                            <div style="color: #888;">範例資料：</div>
+                            <div style="padding: 5px 0; border-bottom: 1px solid #ddd;">姓名 | Email | 職稱 | 備註</div>
+                            <div style="padding: 5px 0;">王醫師 | wang@gmail.com | 主治醫師 | </div>
+                            <div style="padding: 5px 0;">李醫師 | lee@gmail.com | 住院醫師 | </div>
+                            <div style="padding: 5px 0;">陳護理師 | chen@gmail.com | 護理師 | </div>
+                        </div>
+                    </div>
+
+                    <div style="background: white; padding: 15px; border-radius: 8px;">
+                        <strong style="color: #1976d2;">步驟 3：重新載入</strong>
+                        <p style="margin: 10px 0 0 0; color: #666;">
+                            填入資料後，點擊上方「🔄 重新載入郵件資料」按鈕即可。
+                        </p>
+                    </div>
+
+                    <button class="btn btn-secondary" onclick="hideEmailSetupGuide()" style="margin-top: 15px;">關閉指南</button>
                 </div>
             </div>
 
@@ -1088,12 +1144,72 @@
                     </div>
                 </div>
 
+                <!-- 郵件通知功能說明 -->
+                <div style="margin-top: 30px; background: #e3f2fd; padding: 20px; border-radius: 10px; border: 2px solid #2196f3;">
+                    <h3>📧 郵件通知功能</h3>
+                    
+                    <div style="padding: 15px; background: white; border-radius: 8px; margin-bottom: 15px;">
+                        <strong style="color: #1976d2; font-size: 16px;">🎯 功能說明</strong>
+                        <p style="margin: 10px 0 5px 0; color: #555;">
+                            當建立排班時，系統會自動：
+                        </p>
+                        <ul style="margin: 5px 0 0 20px; color: #666;">
+                            <li>✅ 將有設定郵件的醫師加入行事曆邀請</li>
+                            <li>✅ 自動發送郵件通知給醫師</li>
+                            <li>✅ 醫師可在郵件中直接接受/拒絕邀請</li>
+                            <li>✅ 接受後事件會自動加入醫師的行事曆</li>
+                        </ul>
+                    </div>
+
+                    <div style="padding: 15px; background: white; border-radius: 8px; margin-bottom: 15px;">
+                        <strong style="color: #1976d2; font-size: 16px;">📝 設定步驟</strong>
+                        <ol style="margin: 10px 0 0 20px; color: #666; line-height: 1.8;">
+                            <li>在 Google Sheets 中建立「<strong>醫師郵件</strong>」工作表</li>
+                            <li>第一列設定標題：<code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">姓名 | Email | 職稱 | 備註</code></li>
+                            <li>從第二列開始填入人員資料：
+                                <div style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 5px; font-family: monospace; font-size: 13px;">
+                                    <div style="color: #888;">第1列（標題）：</div>
+                                    <div style="padding: 5px 0;">姓名 | Email | 職稱 | 備註</div>
+                                    <div style="color: #888; margin-top: 10px;">第2列起（資料）：</div>
+                                    <div style="padding: 5px 0;">王醫師 | wang@example.com | 主治醫師 | </div>
+                                    <div style="padding: 5px 0;">李醫師 | lee@example.com | 住院醫師 | </div>
+                                </div>
+                            </li>
+                            <li>確保姓名與「事業單位詳細」工作表中的人員名稱完全一致</li>
+                            <li>儲存後系統會自動載入郵件資料</li>
+                        </ol>
+                    </div>
+
+                    <div style="padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ff9800;">
+                        <strong style="color: #f57c00;">⚠️ 注意事項</strong>
+                        <ul style="margin: 8px 0 0 20px; color: #666; line-height: 1.6;">
+                            <li>郵件地址必須是有效的 Gmail 或 Google Workspace 帳號</li>
+                            <li>人員姓名必須與事業單位設定中的名稱完全相同（包含空格）</li>
+                            <li>若未設定郵件，該人員仍會排班但不會收到郵件通知</li>
+                            <li>建議使用醫師個人的 Google 帳號郵件</li>
+                        </ul>
+                    </div>
+
+                    <div style="padding: 15px; background: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50; margin-top: 15px;">
+                        <strong style="color: #2e7d32;">✨ 郵件內容包含</strong>
+                        <ul style="margin: 8px 0 0 20px; color: #666; line-height: 1.6;">
+                            <li>📅 排班日期與時間</li>
+                            <li>🏢 事業單位名稱</li>
+                            <li>📍 工作地點資訊</li>
+                            <li>👥 同班人員名單</li>
+                            <li>📝 備註說明</li>
+                            <li>🔔 行事曆邀請連結（可直接接受/拒絕）</li>
+                        </ul>
+                    </div>
+                </div>
+
                 <div style="margin-top: 30px; background: #f8f9fa; padding: 20px; border-radius: 10px;">
                     <h3>關於系統</h3>
-                    <p><strong>版本：</strong>4.0.0 (階段1增強版)</p>
+                    <p><strong>版本：</strong>4.1.0 (郵件通知增強版)</p>
                     <p><strong>資料來源：</strong>Google Sheets</p>
                     <p><strong>假日API：</strong>Nager.Date (免費)</p>
-                    <p><strong>更新日期：</strong>2025-11-03</p>
+                    <p><strong>新增功能：</strong>自動郵件通知、行事曆邀請</p>
+                    <p><strong>更新日期：</strong>2026-01-17</p>
                 </div>
             </div>
         </div>
@@ -1109,6 +1225,7 @@
         let allShifts = [];
         let editingShiftIndex = -1;
         let holidays = {}; // 假日資料快取 { 'YYYY-MM-DD': {name: '', localName: ''} }
+        let staffEmailMap = {}; // 存儲人員名稱與 Email 的對應關係
 
         // ==================== 初始化 ====================
         window.onload = function() {
@@ -1166,7 +1283,7 @@
         // ==================== 設定管理 ====================
         function loadConfig() {
             const config = localStorage.getItem('sheetsConfig');
-            return config ? JSON.parse(config) : { clientId: '', sheetId: '', sheetRange: '排班資料!A2:H' };
+            return config ? JSON.parse(config) : { clientId: '', sheetId: '', sheetRange: '排班資料!A2:I' };
         }
 
         function saveConfig(clientId, sheetId, sheetRange) {
@@ -1185,7 +1302,7 @@
             const config = loadConfig();
             document.getElementById('settingsClientId').value = config.clientId || '';
             document.getElementById('settingsSheetId').value = config.sheetId || '';
-            document.getElementById('settingsSheetRange').value = config.sheetRange || '排班資料!A2:H';
+            document.getElementById('settingsSheetRange').value = config.sheetRange || '排班資料!A2:I';
             showSettingsStatus('已載入設定', 'success');
         }
 
@@ -1223,14 +1340,52 @@
                 return;
             }
 
+            // 檢查 gapi 是否已初始化
+            if (!gapiInited || !gapi.client || !gapi.client.sheets) {
+                showSettingsStatus('❌ Google API 尚未載入完成，請稍候再試', 'error');
+                return;
+            }
+
+            showSettingsStatus('⏳ 測試連線中...', 'info');
+
             try {
+                // 確保使用正確的授權
+                gapi.client.setToken({ access_token: accessToken });
+                
                 const response = await gapi.client.sheets.spreadsheets.get({
                     spreadsheetId: config.sheetId
                 });
+                
+                if (response && response.result && response.result.properties) {
                 const title = response.result.properties.title;
                 showSettingsStatus(`✅ 連線成功！試算表：${title}`, 'success');
+                } else {
+                    showSettingsStatus('❌ 連線失敗：無法取得試算表資訊', 'error');
+                }
             } catch (error) {
-                showSettingsStatus('連線失敗：' + error.message, 'error');
+                // 改進錯誤處理
+                let errorMessage = '未知錯誤';
+                
+                if (error) {
+                    if (error.message) {
+                        errorMessage = error.message;
+                    } else if (error.error) {
+                        if (error.error.message) {
+                            errorMessage = error.error.message;
+                        } else if (typeof error.error === 'string') {
+                            errorMessage = error.error;
+                        } else {
+                            errorMessage = JSON.stringify(error.error);
+                        }
+                    } else if (typeof error === 'string') {
+                        errorMessage = error;
+                    } else {
+                        errorMessage = JSON.stringify(error);
+                    }
+                }
+                
+                console.error('連線測試錯誤：', error);
+                showSettingsStatus('❌ 連線失敗：' + errorMessage, 'error');
             }
         }
 
@@ -1966,20 +2121,22 @@
                     staff: row[4] || '',
                     location: row[5] || '',
                     color: row[6] || '#667eea',
-                    notes: row[7] || ''
+                    notes: row[7] || '',
+                    eventId: row[8] || '' // 行事曆事件ID
                 })) : [];
 
                 renderCalendar();
                 renderShiftsList();
                 
-                // 自動載入事業單位（不顯示提示）
+                // 自動載入事業單位和醫師郵件（不顯示提示）
                 await loadUnits(false);
+                await loadStaffEmails();
             } catch (error) {
                 console.error('載入排班失敗', error);
             }
         }
 
-        async function addShiftToSheet(shiftData) {
+        async function addShiftToSheet(shiftData, eventId = '') {
             const config = loadConfig();
             const values = [[
                 shiftData.date,
@@ -1989,7 +2146,8 @@
                 shiftData.staff,
                 shiftData.location,
                 shiftData.color,
-                shiftData.notes
+                shiftData.notes,
+                eventId // 行事曆事件ID
             ]];
 
             try {
@@ -2006,10 +2164,17 @@
             }
         }
 
-        async function updateShiftInSheet(index, shiftData) {
+        async function updateShiftInSheet(index, shiftData, eventId = '') {
             const config = loadConfig();
             const rowNumber = index + 2; // +2 因為第1列是標題，索引從0開始
-            const range = `排班資料!A${rowNumber}:H${rowNumber}`;
+            
+            // 如果沒有提供 eventId，保留原有的 eventId
+            if (!eventId) {
+                const shift = allShifts.find(s => s.index === index);
+                eventId = shift ? shift.eventId : '';
+            }
+            
+            const range = `排班資料!A${rowNumber}:I${rowNumber}`;
             
             const values = [[
                 shiftData.date,
@@ -2019,7 +2184,8 @@
                 shiftData.staff,
                 shiftData.location,
                 shiftData.color,
-                shiftData.notes
+                shiftData.notes,
+                eventId // 行事曆事件ID
             ]];
 
             try {
@@ -2040,7 +2206,7 @@
             // Google Sheets API 刪除列比較複雜，這裡先簡化為清空內容
             const config = loadConfig();
             const rowNumber = index + 2;
-            const range = `排班資料!A${rowNumber}:H${rowNumber}`;
+            const range = `排班資料!A${rowNumber}:I${rowNumber}`;
             
             try {
                 await gapi.client.sheets.spreadsheets.values.clear({
@@ -2182,9 +2348,26 @@
 
             // 檢查是否為編輯模式（編輯模式不支援重複排程）
             if (editingShiftIndex >= 0) {
-                const success = await updateShiftInSheet(editingShiftIndex, shiftData);
+                // 取得原排班的事件ID
+                const shift = allShifts.find(s => s.index === editingShiftIndex);
+                const oldEventId = shift ? shift.eventId : '';
+                
+                let newEventId = oldEventId;
+                
+                // 如果啟用自動同步且有舊事件ID，更新行事曆事件
+                if (isAutoSyncEnabled() && oldEventId) {
+                    console.log('🔄 更新行事曆事件...');
+                    newEventId = await autoUpdateCalendarEvent(oldEventId, shiftData);
+                    if (!newEventId) newEventId = oldEventId; // 如果更新失敗，保留舊ID
+                } else if (isAutoSyncEnabled() && !oldEventId) {
+                    // 如果沒有舊事件ID但啟用同步，建立新事件
+                    console.log('📅 建立新的行事曆事件...');
+                    newEventId = await autoSyncShiftToCalendar(shiftData);
+                }
+                
+                const success = await updateShiftInSheet(editingShiftIndex, shiftData, newEventId);
                 if (success) {
-                    alert('儲存成功！');
+                    alert('儲存成功！' + (newEventId && isAutoSyncEnabled() ? '\n已同步更新行事曆' : ''));
                     cancelShiftForm();
                     await loadAllShifts();
                 } else {
@@ -2235,14 +2418,16 @@
                         };
                         
                         try {
-                            const success = await addShiftToSheet(dateShiftData);
+                            let eventId = '';
+                            
+                            // 自動同步到 Google 行事曆並取得事件ID
+                            if (isAutoSyncEnabled()) {
+                                eventId = await autoSyncShiftToCalendar(dateShiftData);
+                            }
+                            
+                            const success = await addShiftToSheet(dateShiftData, eventId);
                             if (success) {
                                 successCount++;
-                                
-                                // 自動同步到 Google 行事曆
-                                if (isAutoSyncEnabled()) {
-                                    await autoSyncShiftToCalendar(dateShiftData);
-                                }
                             } else {
                                 failCount++;
                                 failedDates.push(dates[i]);
@@ -2280,16 +2465,19 @@
                 
             } else {
                 // 單一排班模式
-                const success = await addShiftToSheet(shiftData);
+                let eventId = '';
+                
+                // 自動同步到 Google 行事曆並取得事件ID
+                if (isAutoSyncEnabled()) {
+                    console.log('🔄 開始自動同步到行事曆...');
+                    eventId = await autoSyncShiftToCalendar(shiftData);
+                    console.log('📅 行事曆事件ID：', eventId);
+                }
+                
+                const success = await addShiftToSheet(shiftData, eventId);
                 
                 if (success) {
-                    // 自動同步到 Google 行事曆
-                    if (isAutoSyncEnabled()) {
-                        console.log('🔄 儲存成功，開始自動同步到行事曆...');
-                        await autoSyncShiftToCalendar(shiftData);
-                    }
-                    
-                    alert('儲存成功！');
+                    alert('儲存成功！' + (eventId ? '\n已同步到行事曆' : ''));
                     cancelShiftForm();
                     await loadAllShifts();
                 } else {
@@ -2314,42 +2502,81 @@
             document.getElementById('selectedColor').value = shift.color;
             document.getElementById('notes').value = shift.notes;
             
-            // 設定事業單位（這會觸發 onUnitChange）
+            // 設定事業單位
             document.getElementById('shiftUnit').value = shift.unit;
             
-            // 等待單位資料載入完成
+            // 等待單位資料載入完成（這會生成人員和地點選項）
+            console.log('⏳ 等待單位資料載入...');
             await onUnitChange();
+            
+            // 使用 requestAnimationFrame 確保 DOM 更新完成
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            
+            console.log('✅ 單位資料載入完成，開始設定人員和地點');
             
             // 載入人員選擇（從勾選框系統）
             if (shift.staff) {
                 const staffList = shift.staff.split(',').map(s => s.trim());
                 console.log('👥 要勾選的人員：', staffList);
                 
-                // 勾選對應的人員
-                document.querySelectorAll('input[name="staff"]').forEach(checkbox => {
+                // 等待勾選框生成
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+                // 勾選對應的人員（使用更可靠的選擇器）
+                const allCheckboxes = document.querySelectorAll('#staffCheckboxes input[type="checkbox"]');
+                console.log(`📋 找到 ${allCheckboxes.length} 個人員勾選框`);
+                
+                let checkedCount = 0;
+                allCheckboxes.forEach(checkbox => {
                     const staffName = checkbox.value;
                     if (staffList.includes(staffName)) {
                         checkbox.checked = true;
+                        checkedCount++;
                         // 更新視覺樣式
                         const parent = checkbox.closest('.staff-checkbox-item');
                         if (parent) {
                             parent.classList.add('checked');
                         }
+                        console.log(`✓ 已勾選：${staffName}`);
                     }
                 });
+                
+                console.log(`✅ 成功勾選 ${checkedCount} 位人員`);
                 
                 // 更新人員選擇顯示
                 updateStaffSelection();
             }
             
-            // 設定地點（需要等待地點選項生成）
-            setTimeout(() => {
-                const locationElement = document.getElementById('location');
-                if (locationElement) {
+            // 設定地點（使用更可靠的方式）
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
+            const locationElement = document.getElementById('location');
+            if (locationElement && shift.location) {
+                // 如果是 select，檢查選項是否存在
+                if (locationElement.tagName === 'SELECT') {
+                    const options = Array.from(locationElement.options);
+                    const matchingOption = options.find(opt => opt.value === shift.location);
+                    
+                    if (matchingOption) {
+                        locationElement.value = shift.location;
+                        console.log('📍 設定地點（下拉選單）：', shift.location);
+                    } else {
+                        console.warn('⚠️ 找不到匹配的地點選項：', shift.location);
+                        // 嘗試模糊匹配
+                        const partialMatch = options.find(opt => 
+                            opt.value.includes(shift.location) || shift.location.includes(opt.value)
+                        );
+                        if (partialMatch) {
+                            locationElement.value = partialMatch.value;
+                            console.log('📍 使用模糊匹配設定地點：', partialMatch.value);
+                        }
+                    }
+                } else {
+                    // 如果是 input，直接設定值
                     locationElement.value = shift.location;
-                    console.log('📍 設定地點：', shift.location);
+                    console.log('📍 設定地點（文字輸入）：', shift.location);
                 }
-            }, 100);
+            }
             
             // 編輯模式：隱藏重複排程選項
             const repeatSection = document.getElementById('repeatEnabled').closest('.form-group');
@@ -2365,14 +2592,31 @@
             switchTab('manage');
             
             console.log('✅ 編輯表單載入完成');
+            console.log('📊 最終狀態檢查：', {
+                unit: document.getElementById('shiftUnit').value,
+                date: document.getElementById('shiftDate').value,
+                staff: getSelectedStaff(),
+                location: document.getElementById('location')?.value
+            });
         }
 
         async function deleteShift(index) {
             if (!confirm('確定要刪除這個排班嗎？')) return;
             
+            // 取得該排班的行事曆事件ID
+            const shift = allShifts.find(s => s.index === index);
+            const eventId = shift ? shift.eventId : null;
+            
+            // 如果有事件ID且啟用自動同步，先刪除行事曆事件
+            if (eventId && isAutoSyncEnabled()) {
+                console.log('🗑️ 同步刪除行事曆事件：', eventId);
+                await autoDeleteCalendarEvent(eventId);
+            }
+            
+            // 從 Google Sheets 刪除排班
             const success = await deleteShiftFromSheet(index);
             if (success) {
-                alert('刪除成功！');
+                alert('刪除成功！' + (eventId && isAutoSyncEnabled() ? '\n已同步刪除行事曆事件' : ''));
                 await loadAllShifts();
             } else {
                 alert('刪除失敗，請重試');
@@ -2480,6 +2724,11 @@
             
             event.target.classList.add('active');
             document.getElementById(tabName + 'Tab').classList.add('active');
+            
+            // 切換到醫師郵件頁籤時，自動顯示郵件列表
+            if (tabName === 'staff') {
+                displayStaffEmails();
+            }
         }
 
         // ==================== 匯出功能 ====================
@@ -3063,11 +3312,15 @@
                     return null;
                 }
                 
+                // 取得參與者郵件列表
+                const attendees = getStaffEmails(shiftData.staff);
+                console.log('📧 參與者列表：', attendees);
+                
                 // 建立行事曆事件
                 const event = {
                     summary: `${shiftData.unit} - 排班`,
                     location: shiftData.location || shiftData.unit,
-                    description: `人員：${shiftData.staff}\\n備註：${shiftData.notes || '無'}`,
+                    description: `人員：${shiftData.staff}\\n地點：${shiftData.location || shiftData.unit}\\n備註：${shiftData.notes || '無'}\\n\\n此為自動排班通知，請確認您的行程安排。`,
                     start: {
                         dateTime: `${shiftData.date}T${shiftData.startTime}:00`,
                         timeZone: 'Asia/Taipei'
@@ -3077,21 +3330,34 @@
                         timeZone: 'Asia/Taipei'
                     },
                     colorId: getCalendarColorId(shiftData.color),
+                    attendees: attendees, // 添加參與者
                     reminders: {
                         useDefault: false,
                         overrides: [
                             { method: 'popup', minutes: 30 },
                             { method: 'popup', minutes: 1440 }
                         ]
-                    }
+                    },
+                    // 郵件通知設定
+                    guestsCanModify: false, // 參與者不能修改
+                    guestsCanInviteOthers: false, // 參與者不能邀請其他人
+                    guestsCanSeeOtherGuests: true // 參與者可以看到其他參與者
                 };
                 
+                // 建立事件並發送郵件通知
                 const response = await gapi.client.calendar.events.insert({
                     calendarId: 'primary',
-                    resource: event
+                    resource: event,
+                    sendNotifications: true, // 🔔 自動發送郵件通知
+                    sendUpdates: 'all' // 發送通知給所有參與者
                 });
                 
                 console.log('✅ 自動同步成功，事件ID：', response.result.id);
+                
+                if (attendees.length > 0) {
+                    console.log(`📧 已發送郵件通知給 ${attendees.length} 位人員`);
+                }
+                
                 return response.result.id; // 返回事件ID
                 
             } catch (error) {
@@ -3334,6 +3600,67 @@
             }
         }
         
+        // 載入醫師郵件資料
+        async function loadStaffEmails() {
+            try {
+                const config = loadConfig();
+                if (!config.sheetId) {
+                    console.error('Sheet ID 未設定');
+                    return;
+                }
+                
+                console.log('📧 載入醫師郵件資料...');
+                
+                const response = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: config.sheetId,
+                    range: '醫師郵件!A2:D', // 從第2列開始讀取（第1列是標題）
+                });
+                
+                const rows = response.result.values || [];
+                staffEmailMap = {};
+                
+                // 建立姓名與 Email 的對應關係
+                rows.forEach(row => {
+                    const name = row[0]?.trim();
+                    const email = row[1]?.trim();
+                    if (name && email) {
+                        staffEmailMap[name] = email;
+                    }
+                });
+                
+                console.log('✅ 醫師郵件資料載入完成：', staffEmailMap);
+                console.log(`   共載入 ${Object.keys(staffEmailMap).length} 位人員的郵件`);
+                
+            } catch (error) {
+                console.warn('⚠️ 載入醫師郵件資料失敗（可能工作表不存在）：', error.message);
+                // 如果工作表不存在，不中斷流程
+                staffEmailMap = {};
+            }
+        }
+        
+        // 根據人員名單取得郵件地址列表
+        function getStaffEmails(staffNames) {
+            if (!staffNames) return [];
+            
+            const staffList = staffNames.split(',').map(s => s.trim());
+            const emails = [];
+            
+            staffList.forEach(name => {
+                if (staffEmailMap[name]) {
+                    emails.push({
+                        email: staffEmailMap[name],
+                        displayName: name,
+                        responseStatus: 'needsAction' // 待回應
+                    });
+                    console.log(`📧 找到 ${name} 的郵件：${staffEmailMap[name]}`);
+                } else {
+                    console.log(`ℹ️ ${name} 未設定郵件地址`);
+                }
+            });
+            
+            return emails;
+        }
+        
         // 生成人員勾選框
         function generateStaffCheckboxes() {
             const container = document.getElementById('staffCheckboxes');
@@ -3438,6 +3765,149 @@
         function getSelectedStaff() {
             const checkboxes = document.querySelectorAll('#staffCheckboxes input[type="checkbox"]:checked');
             return Array.from(checkboxes).map(cb => cb.value);
+        }
+        
+        // ==================== 醫師郵件設置管理 ====================
+        
+        // 手動重新載入醫師郵件資料
+        async function loadStaffEmailsManual() {
+            showStaffEmailStatus('載入中...', 'info');
+            
+            await loadStaffEmails();
+            await displayStaffEmails();
+            
+            const count = Object.keys(staffEmailMap).length;
+            if (count > 0) {
+                showStaffEmailStatus(`✅ 成功載入 ${count} 位人員的郵件資料`, 'success');
+            } else {
+                showStaffEmailStatus('⚠️ 未找到郵件資料。請確認已建立「醫師郵件」工作表並填入資料。', 'warning');
+            }
+        }
+        
+        // 顯示醫師郵件列表
+        async function displayStaffEmails() {
+            const container = document.getElementById('staffEmailList');
+            
+            if (Object.keys(staffEmailMap).length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #999;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📭</div>
+                        <h3 style="color: #666;">尚未設定醫師郵件</h3>
+                        <p style="margin: 10px 0;">請先在 Google Sheets 中建立「醫師郵件」工作表</p>
+                        <button class="btn btn-primary" onclick="showEmailSetupGuide()" style="margin-top: 15px;">查看設定指南</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div style="margin-bottom: 15px; padding: 10px; background: #e8f5e9; border-radius: 5px; border-left: 4px solid #4caf50;">
+                    <strong style="color: #2e7d32;">✅ 共 ${Object.keys(staffEmailMap).length} 位人員已設定郵件</strong>
+                </div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f0f0f0;">
+                            <th style="padding: 12px; border: 1px solid #ddd; text-align: left; width: 60px;">編號</th>
+                            <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">姓名</th>
+                            <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">郵件地址</th>
+                            <th style="padding: 12px; border: 1px solid #ddd; text-align: center; width: 100px;">狀態</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            let index = 1;
+            for (const [name, email] of Object.entries(staffEmailMap)) {
+                const isValidEmail = email.includes('@');
+                const statusIcon = isValidEmail ? '✅' : '⚠️';
+                const statusText = isValidEmail ? '有效' : '無效';
+                const statusColor = isValidEmail ? '#4caf50' : '#ff9800';
+                
+                html += `
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 12px; border: 1px solid #ddd; text-align: center; color: #999;">${index}</td>
+                        <td style="padding: 12px; border: 1px solid #ddd;"><strong>${name}</strong></td>
+                        <td style="padding: 12px; border: 1px solid #ddd; font-family: monospace; color: #1976d2;">
+                            <a href="mailto:${email}" style="color: #1976d2; text-decoration: none;">${email}</a>
+                        </td>
+                        <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">
+                            <span style="color: ${statusColor}; font-weight: bold;">${statusIcon} ${statusText}</span>
+                        </td>
+                    </tr>
+                `;
+                index++;
+            }
+            
+            html += `
+                    </tbody>
+                </table>
+                
+                <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ff9800;">
+                    <strong style="color: #f57c00;">💡 提示</strong>
+                    <ul style="margin: 10px 0 0 20px; color: #666; line-height: 1.8;">
+                        <li>建立排班時，系統會自動發送郵件給這些人員</li>
+                        <li>若要修改郵件資料，請點擊「📝 在 Google Sheets 中編輯」</li>
+                        <li>修改後記得點擊「🔄 重新載入郵件資料」</li>
+                    </ul>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        // 顯示狀態訊息
+        function showStaffEmailStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('staffEmailStatus');
+            
+            const colors = {
+                success: { bg: '#e8f5e9', border: '#4caf50', text: '#2e7d32' },
+                error: { bg: '#ffebee', border: '#f44336', text: '#c62828' },
+                warning: { bg: '#fff3cd', border: '#ff9800', text: '#f57c00' },
+                info: { bg: '#e3f2fd', border: '#2196f3', text: '#1976d2' }
+            };
+            
+            const color = colors[type] || colors.info;
+            
+            statusDiv.innerHTML = `
+                <div style="padding: 15px; background: ${color.bg}; border-radius: 8px; border-left: 4px solid ${color.border};">
+                    <strong style="color: ${color.text};">${message}</strong>
+                </div>
+            `;
+            
+            // 3秒後淡出（除非是錯誤或警告）
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 3000);
+            }
+        }
+        
+        // 開啟 Google Sheets 的醫師郵件工作表
+        function openGoogleSheetEmailTab() {
+            const config = loadConfig();
+            if (!config.sheetId) {
+                alert('❌ 尚未設定 Google Sheets ID\n\n請先到「⚙️ 設定」頁籤設定 Google Sheets ID');
+                return;
+            }
+            
+            // 構建 Google Sheets URL，直接開啟「醫師郵件」工作表
+            const sheetUrl = `https://docs.google.com/spreadsheets/d/${config.sheetId}/edit#gid=0`;
+            
+            // 在新視窗開啟
+            window.open(sheetUrl, '_blank');
+            
+            showStaffEmailStatus('📝 已在新視窗開啟 Google Sheets，請找到「醫師郵件」工作表進行編輯', 'info');
+        }
+        
+        // 顯示設定指南
+        function showEmailSetupGuide() {
+            document.getElementById('emailSetupGuide').style.display = 'block';
+            document.getElementById('emailSetupGuide').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        // 隱藏設定指南
+        function hideEmailSetupGuide() {
+            document.getElementById('emailSetupGuide').style.display = 'none';
         }
         
         // 設定地點選擇
@@ -3781,11 +4251,15 @@
             }
             
             try {
+                // 取得參與者郵件列表
+                const attendees = getStaffEmails(shift.staff);
+                console.log('📧 參與者列表：', attendees);
+                
                 // 建立行事曆事件
                 const event = {
                     summary: `${shift.unit} - 排班`,
                     location: shift.location || shift.unit,
-                    description: `人員：${shift.staff}\\n備註：${shift.notes || '無'}`,
+                    description: `人員：${shift.staff}\\n地點：${shift.location || shift.unit}\\n備註：${shift.notes || '無'}\\n\\n此為手動上傳的排班通知。`,
                     start: {
                         dateTime: `${shift.date}T${shift.startTime}:00`,
                         timeZone: 'Asia/Taipei'
@@ -3795,24 +4269,38 @@
                         timeZone: 'Asia/Taipei'
                     },
                     colorId: getCalendarColorId(shift.color),
+                    attendees: attendees, // 添加參與者
                     reminders: {
                         useDefault: false,
                         overrides: [
                             { method: 'popup', minutes: 30 },
                             { method: 'popup', minutes: 1440 } // 1天前
                         ]
-                    }
+                    },
+                    // 郵件通知設定
+                    guestsCanModify: false,
+                    guestsCanInviteOthers: false,
+                    guestsCanSeeOtherGuests: true
                 };
                 
                 console.log('📅 正在上傳到 Google 行事曆：', event);
                 
                 const response = await gapi.client.calendar.events.insert({
                     calendarId: 'primary',
-                    resource: event
+                    resource: event,
+                    sendNotifications: true, // 發送郵件通知
+                    sendUpdates: 'all'
                 });
                 
                 console.log('✅ 行事曆事件已建立：', response.result);
-                alert(`✅ 已成功上傳到 Google 行事曆！\\n\\n事件：${shift.unit} - 排班\\n日期：${shift.date}\\n時間：${shift.startTime} - ${shift.endTime}`);
+                
+                let message = `✅ 已成功上傳到 Google 行事曆！\\n\\n事件：${shift.unit} - 排班\\n日期：${shift.date}\\n時間：${shift.startTime} - ${shift.endTime}`;
+                
+                if (attendees.length > 0) {
+                    message += `\\n\\n📧 已發送郵件通知給 ${attendees.length} 位人員`;
+                }
+                
+                alert(message);
                 
             } catch (error) {
                 console.error('❌ 上傳到行事曆失敗：', error);
