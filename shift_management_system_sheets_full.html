@@ -1216,11 +1216,16 @@
                             <li>✅ 檢查有多少排班已同步到行事曆</li>
                             <li>✅ 檢查有多少舊排班沒有行事曆關聯</li>
                             <li>✅ 顯示哪些排班可能無法同步刪除</li>
+                            <li>✅ 檢查更新機制是否正確（是否會重複）</li>
                         </ul>
                     </div>
 
                     <button class="btn btn-warning" onclick="diagnoseSyncStatus()" style="background: #ff9800; border: none;">
-                        🔍 開始診斷
+                        🔍 診斷排班同步狀態
+                    </button>
+                    
+                    <button class="btn btn-warning" onclick="checkUpdateMechanism()" style="background: #2196f3; border: none; margin-left: 10px; color: white;">
+                        🔬 檢查更新機制
                     </button>
                     
                     <div id="diagnosisResult" style="margin-top: 15px; display: none;"></div>
@@ -1228,10 +1233,10 @@
 
                 <div style="margin-top: 30px; background: #f8f9fa; padding: 20px; border-radius: 10px;">
                     <h3>關於系統</h3>
-                    <p><strong>版本：</strong>4.2.0 (行事曆同步增強版)</p>
+                    <p><strong>版本：</strong>4.3.0 (更新重複問題診斷版)</p>
                     <p><strong>資料來源：</strong>Google Sheets</p>
                     <p><strong>假日API：</strong>Nager.Date (免費)</p>
-                    <p><strong>新增功能：</strong>同步診斷工具、完善刪除通知</p>
+                    <p><strong>新增功能：</strong>更新機制檢查工具、完整診斷報告</p>
                     <p><strong>更新日期：</strong>2026-01-17</p>
                 </div>
             </div>
@@ -3452,6 +3457,180 @@
         // 檢查是否啟用自動同步
         function isAutoSyncEnabled() {
             return localStorage.getItem('autoSyncCalendar') === 'true';
+        }
+        
+        // 檢查更新機制是否正確
+        function checkUpdateMechanism() {
+            const resultDiv = document.getElementById('diagnosisResult');
+            resultDiv.style.display = 'block';
+            
+            let html = `
+                <div style="padding: 20px; background: white; border-radius: 8px;">
+                    <strong style="color: #1976d2; font-size: 18px;">🔬 更新機制檢查報告</strong>
+                    <div style="margin-top: 20px;">
+            `;
+            
+            // 檢查 1：函數是否存在
+            const hasUpdateFunction = typeof autoUpdateCalendarEvent === 'function';
+            html += `
+                <div style="padding: 15px; background: ${hasUpdateFunction ? '#e8f5e9' : '#ffebee'}; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${hasUpdateFunction ? '#4caf50' : '#f44336'};">
+                    <strong>${hasUpdateFunction ? '✅' : '❌'} 更新函數存在性檢查</strong>
+                    <p style="margin: 10px 0 0 0; color: #666;">
+                        autoUpdateCalendarEvent 函數${hasUpdateFunction ? '存在' : '不存在'}
+                    </p>
+                </div>
+            `;
+            
+            if (hasUpdateFunction) {
+                // 檢查 2：函數是否使用正確的 update API
+                const functionCode = autoUpdateCalendarEvent.toString();
+                const usesUpdateAPI = functionCode.includes('events.update');
+                const usesDeleteAPI = functionCode.includes('autoDeleteCalendarEvent') || functionCode.includes('events.delete');
+                
+                html += `
+                    <div style="padding: 15px; background: ${usesUpdateAPI && !usesDeleteAPI ? '#e8f5e9' : '#fff3cd'}; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${usesUpdateAPI && !usesDeleteAPI ? '#4caf50' : '#ff9800'};">
+                        <strong>${usesUpdateAPI && !usesDeleteAPI ? '✅' : '⚠️'} 更新邏輯檢查</strong>
+                        <p style="margin: 10px 0 0 0; color: #666;">
+                            ${usesUpdateAPI ? '✅ 使用 events.update API（正確）' : '❌ 未使用 events.update API'}
+                        </p>
+                        <p style="margin: 10px 0 0 0; color: #666;">
+                            ${usesDeleteAPI ? '⚠️ 包含 delete 邏輯（可能有問題）' : '✅ 不包含 delete 邏輯（正確）'}
+                        </p>
+                    </div>
+                `;
+                
+                // 檢查 3：按鈕禁用機制
+                const saveShiftCode = saveShift.toString();
+                const hasButtonDisable = saveShiftCode.includes('btn.disabled = true');
+                
+                html += `
+                    <div style="padding: 15px; background: ${hasButtonDisable ? '#e8f5e9' : '#ffebee'}; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${hasButtonDisable ? '#4caf50' : '#f44336'};">
+                        <strong>${hasButtonDisable ? '✅' : '❌'} 按鈕防重複點擊機制</strong>
+                        <p style="margin: 10px 0 0 0; color: #666;">
+                            saveShift 函數${hasButtonDisable ? '有' : '沒有'}禁用按鈕的邏輯
+                        </p>
+                    </div>
+                `;
+                
+                // 檢查 4：自動同步狀態
+                const autoSyncEnabled = isAutoSyncEnabled();
+                html += `
+                    <div style="padding: 15px; background: ${autoSyncEnabled ? '#e8f5e9' : '#fff3cd'}; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${autoSyncEnabled ? '#4caf50' : '#ff9800'};">
+                        <strong>${autoSyncEnabled ? '✅' : '⚠️'} 自動同步狀態</strong>
+                        <p style="margin: 10px 0 0 0; color: #666;">
+                            ${autoSyncEnabled ? '已啟用自動同步' : '未啟用自動同步（不會更新行事曆）'}
+                        </p>
+                    </div>
+                `;
+                
+                // 檢查 5：醫師郵件設定
+                const hasEmailMap = staffEmailMap && Object.keys(staffEmailMap).length > 0;
+                html += `
+                    <div style="padding: 15px; background: ${hasEmailMap ? '#e8f5e9' : '#fff3cd'}; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${hasEmailMap ? '#4caf50' : '#ff9800'};">
+                        <strong>${hasEmailMap ? '✅' : '⚠️'} 醫師郵件設定</strong>
+                        <p style="margin: 10px 0 0 0; color: #666;">
+                            ${hasEmailMap ? `已設定 ${Object.keys(staffEmailMap).length} 位醫師的郵件` : '未設定醫師郵件（不會發送通知）'}
+                        </p>
+                    </div>
+                `;
+                
+                // 綜合判斷
+                const allCorrect = usesUpdateAPI && !usesDeleteAPI && hasButtonDisable;
+                
+                html += `
+                    <div style="padding: 20px; background: ${allCorrect ? '#e8f5e9' : '#fff3cd'}; border-radius: 8px; margin-top: 20px; border: 2px solid ${allCorrect ? '#4caf50' : '#ff9800'};">
+                        <strong style="color: ${allCorrect ? '#2e7d32' : '#f57c00'}; font-size: 16px;">
+                            ${allCorrect ? '✅ 綜合評估：更新機制正確' : '⚠️ 綜合評估：可能存在問題'}
+                        </strong>
+                        <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 5px;">
+                `;
+                
+                if (allCorrect) {
+                    html += `
+                        <p style="margin: 0; color: #666; line-height: 1.8;">
+                            <strong style="color: #2e7d32;">系統配置正確！</strong><br><br>
+                            ✅ 使用正確的 update API（不會產生重複事件）<br>
+                            ✅ 有按鈕防重複點擊機制<br>
+                            ${autoSyncEnabled ? '✅ 已啟用自動同步<br>' : ''}
+                            ${hasEmailMap ? `✅ 已設定 ${Object.keys(staffEmailMap).length} 位醫師郵件<br>` : ''}
+                            <br>
+                            <strong>如果仍然出現重複：</strong><br>
+                            1. 請按 Ctrl + Shift + R 強制刷新頁面<br>
+                            2. 清除瀏覽器快取後重新測試<br>
+                            3. 檢查是否有舊的重複事件殘留<br>
+                            4. 使用無痕模式測試排除擴充套件影響
+                        </p>
+                    `;
+                } else {
+                    html += `
+                        <p style="margin: 0; color: #666; line-height: 1.8;">
+                            <strong style="color: #f57c00;">發現潛在問題！</strong><br><br>
+                            ${!usesUpdateAPI ? '❌ 未使用 events.update API<br>' : ''}
+                            ${usesDeleteAPI ? '⚠️ 包含 delete 邏輯（可能導致重複）<br>' : ''}
+                            ${!hasButtonDisable ? '❌ 缺少按鈕防重複點擊機制<br>' : ''}
+                            <br>
+                            <strong>建議處理：</strong><br>
+                            1. 您可能使用的是舊版本代碼<br>
+                            2. 請按 Ctrl + Shift + R 強制刷新<br>
+                            3. 清除瀏覽器快取：<br>
+                               - Chrome: Ctrl + Shift + Delete<br>
+                               - 選擇「全部時間」<br>
+                               - 清除「快取的圖片和檔案」<br>
+                            4. 重新載入頁面並再次檢查<br>
+                            5. 如果問題持續，請使用無痕模式測試
+                        </p>
+                    `;
+                }
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+                
+                // 測試建議
+                html += `
+                    <div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+                        <strong style="color: #1976d2;">💡 測試建議</strong>
+                        <ol style="margin: 10px 0 0 20px; color: #666; line-height: 1.8;">
+                            <li>在 Chrome DevTools 的 Console 頁籤觀察日誌</li>
+                            <li>編輯一個測試排班</li>
+                            <li>查看 Console 應顯示：
+                                <div style="margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 5px; font-family: monospace; font-size: 13px;">
+                                    🔄 更新行事曆事件...<br>
+                                    🔄 自動更新行事曆事件：xxx<br>
+                                    ✅ 行事曆事件已更新
+                                </div>
+                            </li>
+                            <li>如果看到「🗑️ 刪除」字樣，表示使用舊版本</li>
+                            <li>檢查 Google 行事曆是否只有一個事件</li>
+                        </ol>
+                    </div>
+                `;
+                
+            } else {
+                html += `
+                    <div style="padding: 15px; background: #ffebee; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #f44336;">
+                        <strong style="color: #c62828;">❌ 嚴重錯誤</strong>
+                        <p style="margin: 10px 0 0 0; color: #666;">
+                            無法找到 autoUpdateCalendarEvent 函數！<br><br>
+                            <strong>這表示：</strong><br>
+                            - 頁面未正確載入<br>
+                            - 或使用了損壞的版本<br><br>
+                            <strong>請執行：</strong><br>
+                            1. 完全關閉瀏覽器<br>
+                            2. 清除所有快取<br>
+                            3. 重新開啟並載入系統
+                        </p>
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                </div>
+            `;
+            
+            resultDiv.innerHTML = html;
         }
         
         // 診斷排班同步狀態
