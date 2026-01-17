@@ -2301,50 +2301,65 @@
         }
 
         async function saveShift() {
-            // 階段2：從勾選框取得人員
-            const selectedStaff = getSelectedStaff();
-            let staffValue = '';
+            // 防止重複點擊：禁用儲存按鈕
+            const saveButtons = document.querySelectorAll('button[onclick="saveShift()"]');
+            saveButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+                btn.style.cursor = 'not-allowed';
+            });
             
-            if (selectedStaff && selectedStaff.length > 0) {
-                // 使用勾選的人員
-                staffValue = selectedStaff.join(', ');
-            } else {
-                // 降級：嘗試從隱藏的 input 取得（編輯模式或舊資料）
-                const staffNamesInput = document.getElementById('staffNames');
-                staffValue = staffNamesInput ? staffNamesInput.value : '';
-            }
-            
-            // 階段2：從地點欄位取得地點（可能是 input 或 select）
-            const locationElement = document.getElementById('location');
-            let locationValue = '';
-            
-            if (locationElement) {
-                // 取得 input 或 select 的值
-                locationValue = locationElement.value || '';
-            }
-            
-            // 如果沒有地點，使用事業單位名稱作為預設
-            if (!locationValue) {
-                locationValue = document.getElementById('shiftUnit').value;
-            }
-            
-            console.log('📍 地點資料：', locationValue);
-            
-            const shiftData = {
-                date: document.getElementById('shiftDate').value,
-                startTime: document.getElementById('startTime').value,
-                endTime: document.getElementById('endTime').value,
-                unit: document.getElementById('shiftUnit').value,
-                staff: staffValue,
-                location: locationValue,
-                color: document.getElementById('selectedColor').value,
-                notes: document.getElementById('notes').value
-            };
+            try {
+                // 階段2：從勾選框取得人員
+                const selectedStaff = getSelectedStaff();
+                let staffValue = '';
+                
+                if (selectedStaff && selectedStaff.length > 0) {
+                    // 使用勾選的人員
+                    staffValue = selectedStaff.join(', ');
+                } else {
+                    // 降級：嘗試從隱藏的 input 取得（編輯模式或舊資料）
+                    const staffNamesInput = document.getElementById('staffNames');
+                    staffValue = staffNamesInput ? staffNamesInput.value : '';
+                }
+                
+                // 階段2：從地點欄位取得地點（可能是 input 或 select）
+                const locationElement = document.getElementById('location');
+                let locationValue = '';
+                
+                if (locationElement) {
+                    // 取得 input 或 select 的值
+                    locationValue = locationElement.value || '';
+                }
+                
+                // 如果沒有地點，使用事業單位名稱作為預設
+                if (!locationValue) {
+                    locationValue = document.getElementById('shiftUnit').value;
+                }
+                
+                console.log('📍 地點資料：', locationValue);
+                
+                const shiftData = {
+                    date: document.getElementById('shiftDate').value,
+                    startTime: document.getElementById('startTime').value,
+                    endTime: document.getElementById('endTime').value,
+                    unit: document.getElementById('shiftUnit').value,
+                    staff: staffValue,
+                    location: locationValue,
+                    color: document.getElementById('selectedColor').value,
+                    notes: document.getElementById('notes').value
+                };
 
-            if (!shiftData.date || !shiftData.startTime || !shiftData.endTime || !shiftData.unit || !shiftData.staff) {
-                alert('請填寫所有必填欄位（包含至少一位人員）');
-                return;
-            }
+                if (!shiftData.date || !shiftData.startTime || !shiftData.endTime || !shiftData.unit || !shiftData.staff) {
+                    alert('請填寫所有必填欄位（包含至少一位人員）');
+                    // 啟用按鈕
+                    saveButtons.forEach(btn => {
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                        btn.style.cursor = 'pointer';
+                    });
+                    return;
+                }
 
             // 檢查是否為編輯模式（編輯模式不支援重複排程）
             if (editingShiftIndex >= 0) {
@@ -2373,6 +2388,13 @@
                 } else {
                     alert('儲存失敗，請重試');
                 }
+                
+                // 啟用按鈕
+                saveButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                });
                 return;
             }
 
@@ -2388,11 +2410,23 @@
                     
                     if (dates.length === 0) {
                         alert('❌ 沒有生成任何排班日期，請檢查重複設定');
+                        // 啟用按鈕
+                        saveButtons.forEach(btn => {
+                            btn.disabled = false;
+                            btn.style.opacity = '1';
+                            btn.style.cursor = 'pointer';
+                        });
                         return;
                     }
                     
                     const confirmed = confirm(`即將建立 ${dates.length} 個排班\n\n確定要繼續嗎？`);
                     if (!confirmed) {
+                        // 啟用按鈕
+                        saveButtons.forEach(btn => {
+                            btn.disabled = false;
+                            btn.style.opacity = '1';
+                            btn.style.cursor = 'pointer';
+                        });
                         return;
                     }
                     
@@ -2461,6 +2495,13 @@
                 } catch (error) {
                     console.error('❌ 重複排程錯誤：', error);
                     alert('❌ 重複排程失敗：' + error.message);
+                } finally {
+                    // 啟用按鈕
+                    saveButtons.forEach(btn => {
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                        btn.style.cursor = 'pointer';
+                    });
                 }
                 
             } else {
@@ -2483,6 +2524,25 @@
                 } else {
                     alert('儲存失敗，請重試');
                 }
+                
+                // 啟用按鈕
+                saveButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                });
+            }
+            
+            } catch (error) {
+                console.error('❌ 儲存排班發生錯誤：', error);
+                alert('❌ 儲存失敗：' + error.message);
+                
+                // 啟用按鈕
+                saveButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                });
             }
         }
 
@@ -3396,15 +3456,70 @@
             console.log('🔄 自動更新行事曆事件：', eventId);
             
             try {
-                // 先刪除舊事件
-                await autoDeleteCalendarEvent(eventId);
+                // 檢查是否已登入
+                if (!gapiInited || !gisInited) {
+                    console.warn('⚠️ Google API 未初始化');
+                    return null;
+                }
                 
-                // 建立新事件
-                const newEventId = await autoSyncShiftToCalendar(shiftData);
-                console.log('✅ 行事曆事件已更新');
-                return newEventId;
+                // 取得參與者郵件列表
+                const attendees = getStaffEmails(shiftData.staff);
+                console.log('📧 更新參與者列表：', attendees);
+                
+                // 準備更新的事件資料
+                const event = {
+                    summary: `${shiftData.unit} - 排班`,
+                    location: shiftData.location || shiftData.unit,
+                    description: `人員：${shiftData.staff}\\n地點：${shiftData.location || shiftData.unit}\\n備註：${shiftData.notes || '無'}\\n\\n此為自動排班通知，請確認您的行程安排。`,
+                    start: {
+                        dateTime: `${shiftData.date}T${shiftData.startTime}:00`,
+                        timeZone: 'Asia/Taipei'
+                    },
+                    end: {
+                        dateTime: `${shiftData.date}T${shiftData.endTime}:00`,
+                        timeZone: 'Asia/Taipei'
+                    },
+                    colorId: getCalendarColorId(shiftData.color),
+                    attendees: attendees,
+                    reminders: {
+                        useDefault: false,
+                        overrides: [
+                            { method: 'popup', minutes: 30 },
+                            { method: 'popup', minutes: 1440 }
+                        ]
+                    },
+                    guestsCanModify: false,
+                    guestsCanInviteOthers: false,
+                    guestsCanSeeOtherGuests: true
+                };
+                
+                // 使用 update API 直接更新事件（避免重複）
+                const response = await gapi.client.calendar.events.update({
+                    calendarId: 'primary',
+                    eventId: eventId,
+                    resource: event,
+                    sendNotifications: true,
+                    sendUpdates: 'all'
+                });
+                
+                console.log('✅ 行事曆事件已更新，事件ID：', response.result.id);
+                
+                if (attendees.length > 0) {
+                    console.log(`📧 已發送更新通知給 ${attendees.length} 位人員`);
+                }
+                
+                return response.result.id; // 返回相同的事件ID
+                
             } catch (error) {
                 console.error('❌ 更新行事曆事件失敗：', error);
+                
+                // 如果更新失敗（例如事件已被刪除），嘗試建立新事件
+                if (error.status === 404) {
+                    console.log('⚠️ 原事件不存在（可能已被刪除），建立新事件...');
+                    const newEventId = await autoSyncShiftToCalendar(shiftData);
+                    return newEventId;
+                }
+                
                 return null;
             }
         }
