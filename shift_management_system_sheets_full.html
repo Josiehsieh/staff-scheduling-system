@@ -1751,7 +1751,20 @@
 
                 console.log('✅ 寫入成功：', updateResponse);
                 
-                alert(`✅ 事業單位「${name}」${currentEditingUnitIndex !== null ? '更新' : '新增'}成功！`);
+                // 清除時數快取，確保下次使用時重新計算
+                currentMonthHoursUsage = {};
+                console.log('🗑️ 已清除時數快取');
+                
+                // 如果當前編輯的單位正在排班頁面使用，重新載入單位資料
+                const currentShiftUnit = document.getElementById('shiftUnit')?.value;
+                if (currentShiftUnit === name) {
+                    console.log('🔄 重新載入當前使用的單位資料...');
+                    await loadUnitDetailData(name);
+                    await updateHoursInfo(true); // 強制重新計算時數
+                    console.log('✅ 單位資料和時數已更新');
+                }
+                
+                alert(`✅ 事業單位「${name}」${currentEditingUnitIndex !== null ? '更新' : '新增'}成功！\n\n${currentShiftUnit === name ? '排班頁面時數已同步更新' : ''}`);
                 clearUnitForm();
                 await loadUnitsDetailed();
                 await loadUnits(false); // 更新下拉選單
@@ -2812,7 +2825,7 @@
         }
 
         // ==================== 頁籤切換 ====================
-        function switchTab(tabName) {
+        async function switchTab(tabName) {
             document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             
@@ -2822,6 +2835,18 @@
             // 切換到醫師郵件頁籤時，自動顯示郵件列表
             if (tabName === 'staff') {
                 displayStaffEmails();
+            }
+            
+            // 切換到排班管理頁籤時，如果有選中的單位，重新載入時數資訊
+            if (tabName === 'manage') {
+                const currentShiftUnit = document.getElementById('shiftUnit')?.value;
+                if (currentShiftUnit && currentUnitData) {
+                    console.log('🔄 切換到排班頁籤，重新載入時數資訊...');
+                    // 重新載入單位資料以獲取最新時數設定
+                    await loadUnitDetailData(currentShiftUnit);
+                    await updateHoursInfo(true); // 強制重新計算時數
+                    console.log('✅ 時數資訊已更新');
+                }
             }
         }
 
@@ -4131,7 +4156,7 @@
         }
         
         // 更新時數資訊
-        async function updateHoursInfo() {
+        async function updateHoursInfo(forceRecalculate = false) {
             const infoSpan = document.getElementById('unitHoursInfo');
             
             if (!currentUnitData) {
@@ -4139,8 +4164,8 @@
                 return;
             }
             
-            // 計算當月剩餘時數
-            const remaining = await calculateRemainingHours(currentUnitData.name);
+            // 計算當月剩餘時數（可強制重新計算）
+            const remaining = await calculateRemainingHours(currentUnitData.name, forceRecalculate);
             
             if (remaining) {
                 // 根據剩餘時數顯示不同顏色
@@ -4162,9 +4187,9 @@
         }
         
         // 計算剩餘時數
-        async function calculateRemainingHours(unitName) {
+        async function calculateRemainingHours(unitName, forceRecalculate = false) {
             try {
-                console.log('🔢 計算剩餘時數，事業單位：', unitName);
+                console.log('🔢 計算剩餘時數，事業單位：', unitName, forceRecalculate ? '(強制重新計算)' : '');
                 
                 // 1. 獲取當前月份
                 const shiftDate = document.getElementById('shiftDate').value;
@@ -4175,7 +4200,15 @@
                 
                 const date = new Date(shiftDate);
                 const month = date.getMonth() + 1; // 1-12
-                console.log('📅 計算月份：', month);
+                const yearMonth = `${date.getFullYear()}-${String(month).padStart(2, '0')}`;
+                console.log('📅 計算月份：', yearMonth);
+                
+                // 檢查快取（除非強制重新計算）
+                const cacheKey = `${unitName}-${yearMonth}`;
+                if (!forceRecalculate && currentMonthHoursUsage[cacheKey]) {
+                    console.log('📦 使用快取資料');
+                    return currentMonthHoursUsage[cacheKey];
+                }
                 
                 // 2. 從「事業單位詳細」讀取該單位的月度配額
                 if (!currentUnitData || !currentUnitData.monthlyHours || !currentUnitData.monthlyHours[month]) {
@@ -4191,7 +4224,6 @@
                 console.log(`📊 ${month}月配額 - 醫生:${quotaDoc}h, 護理師:${quotaNurse}h, 其他:${quotaOther}h`);
                 
                 // 3. 計算該單位當月已排班的時數
-                const yearMonth = `${date.getFullYear()}-${String(month).padStart(2, '0')}`;
                 let usedDoc = 0, usedNurse = 0, usedOther = 0;
                 
                 allShifts.forEach(shift => {
@@ -4228,6 +4260,10 @@
                 };
                 
                 console.log(`✅ ${month}月剩餘 - 醫生:${remaining.doctor}h, 護理師:${remaining.nurse}h, 其他:${remaining.other}h`);
+                
+                // 存入快取
+                currentMonthHoursUsage[cacheKey] = remaining;
+                console.log('💾 已存入快取：', cacheKey);
                 
                 return remaining;
                 
