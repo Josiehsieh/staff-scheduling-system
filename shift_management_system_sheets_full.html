@@ -1343,14 +1343,31 @@
             maybeEnableButtons();
         }
 
+        // 建立 Google 登入元件（error_callback 必須在建立時傳入才會生效）
+        function createTokenClient(clientId) {
+            return google.accounts.oauth2.initTokenClient({
+                client_id: clientId,
+                scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar',
+                callback: '',
+                error_callback: (err) => {
+                    console.error('登入視窗錯誤', err);
+                    const ua = navigator.userAgent || '';
+                    const inApp = /Line|FBAN|FBAV|Instagram|MicroMessenger|Cursor|Electron/i.test(ua);
+                    if (err && err.type === 'popup_failed_to_open') {
+                        showLoginStatus('❌ 登入視窗無法開啟（被瀏覽器封鎖）。請點網址列右側的「已封鎖彈出視窗」圖示並選擇允許，或改用 Chrome / Edge / Safari 開啟此網址' + (inApp ? '。目前似乎是內建瀏覽器，這類瀏覽器通常不支援 Google 登入' : ''), 'error');
+                    } else if (err && err.type === 'popup_closed') {
+                        showLoginStatus('登入視窗已關閉，尚未完成授權，請再試一次', 'error');
+                    } else {
+                        showLoginStatus('❌ 登入失敗：' + ((err && (err.message || err.type)) || '未知錯誤'), 'error');
+                    }
+                },
+            });
+        }
+
         function gisLoaded() {
             const config = loadConfig();
             if (config.clientId) {
-                tokenClient = google.accounts.oauth2.initTokenClient({
-                    client_id: config.clientId,
-                    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar',
-                    callback: '',
-                });
+                tokenClient = createTokenClient(config.clientId);
                 gisInited = true;
                 maybeEnableButtons();
             }
@@ -1610,11 +1627,7 @@
 
             // 重新初始化 GIS Token Client
             if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
-                tokenClient = google.accounts.oauth2.initTokenClient({
-                    client_id: clientId,
-                    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar',
-                    callback: '',
-                });
+                tokenClient = createTokenClient(clientId);
                 gisInited = true;
                 maybeEnableButtons();
             }
@@ -1658,11 +1671,7 @@
             }
 
             // 重新初始化 GIS
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: clientId,
-                scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar',
-                callback: '',
-            });
+            tokenClient = createTokenClient(clientId);
             gisInited = true;
         }
 
@@ -1762,17 +1771,6 @@
                     console.error('初始化失敗', error);
                     const msg = (error && (error.result?.error?.message || error.message)) || JSON.stringify(error);
                     alert('已登入，但載入資料失敗：\n' + msg + '\n\n請到「⚙️ 設定」確認 Sheet ID 是否正確。');
-                }
-            };
-
-            tokenClient.error_callback = (err) => {
-                console.error('登入視窗錯誤', err);
-                if (err && err.type === 'popup_failed_to_open') {
-                    showLoginStatus('❌ 登入視窗被瀏覽器封鎖，請允許此網站的彈出視窗後再試', 'error');
-                } else if (err && err.type === 'popup_closed') {
-                    showLoginStatus('登入視窗已關閉，請再試一次', 'error');
-                } else {
-                    showLoginStatus('❌ 登入失敗：' + (err && (err.message || err.type) || '未知錯誤'), 'error');
                 }
             };
 
