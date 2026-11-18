@@ -500,6 +500,15 @@
                 </svg>
                 使用 Google 帳號登入
             </button>
+            <div style="margin-top: 12px;">
+                <button type="button" id="redirectLoginBtn" onclick="handleRedirectLogin()"
+                    style="background: none; border: none; color: #667eea; font-size: 14px; text-decoration: underline; cursor: pointer;">
+                    登入視窗打不開？改用同頁跳轉登入
+                </button>
+                <div style="color: #999; font-size: 12px; margin-top: 4px;">
+                    使用前需在 Google Cloud「已授權的重新導向 URI」加入本頁網址
+                </div>
+            </div>
             <div id="loginStatus" style="margin-top: 20px;"></div>
 
             <!-- 登入前也能設定（未登入時看不到主畫面的設定標籤） -->
@@ -1308,6 +1317,8 @@
         let editingShiftIndex = -1;
         let holidays = {}; // 假日資料快取 { 'YYYY-MM-DD': {name: '', localName: ''} }
         let staffEmailMap = {}; // 存儲人員名稱與 Email 的對應關係
+        let pendingRedirectToken = null; // 同頁跳轉登入回來後暫存的權杖
+        const OAUTH_SCOPE = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar';
 
         // ==================== 初始化 ====================
         window.onload = function() {
@@ -1325,6 +1336,9 @@
 
             // 載入設定
             loadSettingsOnInit();
+
+            // 若是從 Google 同頁跳轉登入回來，接手完成登入
+            handleRedirectReturn();
         };
 
         function gapiLoaded() {
@@ -1332,22 +1346,37 @@
         }
 
         async function initializeGapiClient() {
-            await gapi.client.init({
-                apiKey: '',
-                discoveryDocs: [
-                    'https://sheets.googleapis.com/$discovery/rest?version=v4',
-                    'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'
-                ],
-            });
+            try {
+                await gapi.client.init({
+                    apiKey: '',
+                    discoveryDocs: [
+                        'https://sheets.googleapis.com/$discovery/rest?version=v4',
+                        'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'
+                    ],
+                });
+            } catch (error) {
+                console.error('Google API 載入失敗', error);
+                if (pendingRedirectToken) {
+                    showLoginStatus('❌ Google API 載入失敗，請重新整理頁面後再登入', 'error');
+                }
+                throw error;
+            }
             gapiInited = true;
             maybeEnableButtons();
+
+            // 同頁跳轉登入回來時，權杖會先暫存，等 Google API 載入完成才進入系統
+            if (pendingRedirectToken) {
+                const token = pendingRedirectToken;
+                pendingRedirectToken = null;
+                completeLogin(token);
+            }
         }
 
-        // 建立 Google 登入元件（error_callback 必須在建立時傳入才會生效）
+        // 建立 Google 登入元件
         function createTokenClient(clientId) {
             return google.accounts.oauth2.initTokenClient({
                 client_id: clientId,
-                scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar',
+                scope: OAUTH_SCOPE,
                 callback: '',
                 error_callback: (err) => {
                     console.error('登入視窗錯誤', err);
@@ -1356,7 +1385,7 @@
                     if (err && err.type === 'popup_failed_to_open') {
                         showLoginStatus('❌ 登入視窗無法開啟（被瀏覽器封鎖）。請點網址列右側的「已封鎖彈出視窗」圖示並選擇允許，或改用 Chrome / Edge / Safari 開啟此網址' + (inApp ? '。目前似乎是內建瀏覽器，這類瀏覽器通常不支援 Google 登入' : ''), 'error');
                     } else if (err && err.type === 'popup_closed') {
-                        showLoginStatus('登入視窗已關閉，尚未完成授權，請再試一次', 'error');
+                        showLoginStatus('登入視窗已關閉，尚未完成授權。若視窗根本沒有出現，請改點上方「改用同頁跳轉登入」', 'error');
                     } else {
                         showLoginStatus('❌ 登入失敗：' + ((err && (err.message || err.type)) || '未知錯誤'), 'error');
                     }
@@ -1757,27 +1786,96 @@
                     console.error('登入失敗', resp);
                     return;
                 }
-                accessToken = resp.access_token;
-                gapi.client.setToken({ access_token: accessToken });
-
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('mainApp').style.display = 'block';
-
-                loadUserInfo();
-
-                try {
-                    await initializeApp();
-                } catch (error) {
-                    console.error('初始化失敗', error);
-                    const msg = (error && (error.result?.error?.message || error.message)) || JSON.stringify(error);
-                    alert('已登入，但載入資料失敗：\n' + msg + '\n\n請到「⚙️ 設定」確認 Sheet ID 是否正確。');
-                }
+                await completeLogin(resp.access_token);
             };
 
             if (accessToken === null) {
                 tokenClient.requestAccessToken({prompt: 'consent'});
             } else {
                 tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+
+        // 取得權杖後進入系統（彈出視窗登入與同頁跳轉登入共用）
+        async function completeLogin(token) {
+            accessToken = token;
+            gapi.client.setToken({ access_token: accessToken });
+
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+
+            loadUserInfo();
+
+            try {
+                await initializeApp();
+            } catch (error) {
+                console.error('初始化失敗', error);
+                const msg = (error && (error.result?.error?.message || error.message)) || JSON.stringify(error);
+                alert('已登入，但載入資料失敗：\n' + msg + '\n\n請到「⚙️ 設定」確認 Sheet ID 是否正確。');
+            }
+        }
+
+        // ---------- 同頁跳轉登入（不開新視窗，不受彈出視窗攔截影響） ----------
+        function getRedirectUri() {
+            return window.location.origin + window.location.pathname;
+        }
+
+        function handleRedirectLogin() {
+            const config = loadConfig();
+            if (!config.clientId) {
+                showLoginStatus('請先點「⚙️ 尚未設定？」填入用戶端 ID 和 Sheet ID', 'error');
+                return;
+            }
+
+            const bytes = new Uint8Array(16);
+            crypto.getRandomValues(bytes);
+            const state = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+            sessionStorage.setItem('oauthState', state);
+
+            const params = new URLSearchParams({
+                client_id: config.clientId,
+                redirect_uri: getRedirectUri(),
+                response_type: 'token',
+                scope: OAUTH_SCOPE,
+                state: state,
+                prompt: 'consent',
+            });
+
+            showLoginStatus('⏳ 正在前往 Google 登入頁面...', 'info');
+            window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+        }
+
+        // 從 Google 跳轉回來時，網址的 # 後面會帶著權杖或錯誤訊息
+        function handleRedirectReturn() {
+            const hash = window.location.hash.replace(/^#/, '');
+            if (!hash) return;
+
+            const params = new URLSearchParams(hash);
+            const token = params.get('access_token');
+            const error = params.get('error');
+            if (!token && !error) return;
+
+            const expectedState = sessionStorage.getItem('oauthState');
+            sessionStorage.removeItem('oauthState');
+
+            // 把權杖從網址列移除，避免留在瀏覽紀錄或被複製出去
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+
+            if (error) {
+                showLoginStatus('登入失敗：' + error, 'error');
+                return;
+            }
+
+            if (!expectedState || params.get('state') !== expectedState) {
+                showLoginStatus('❌ 登入驗證不符，請重新點「改用同頁跳轉登入」', 'error');
+                return;
+            }
+
+            showLoginStatus('⏳ 登入成功，正在載入資料...', 'info');
+            if (gapiInited) {
+                completeLogin(token);
+            } else {
+                pendingRedirectToken = token;
             }
         }
 
