@@ -509,6 +509,12 @@
                     <li>參考 WEB_GOOGLE_SHEETS_SETUP.md</li>
                     <li>準備好用戶端 ID 和 Sheet ID</li>
                 </ol>
+                <div style="background: #e8f5e9; padding: 10px; border-radius: 8px; margin-top: 15px;">
+                    <p style="margin: 0; color: #2e7d32; font-size: 13px;">
+                        <strong>☁️ 新功能：</strong>配置會自動保存到雲端！<br>
+                        登入後可在任何裝置使用，無需重新設定。
+                    </p>
+                </div>
             </div>
         </div>
     </div>
@@ -1053,6 +1059,14 @@
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
                     <h3>Google Sheets 設定</h3>
                     
+                    <div style="background: #e3f2fd; padding: 12px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #2196F3;">
+                        <p style="margin: 0; font-size: 14px;">
+                            <strong>☁️ 雲端同步功能：</strong><br>
+                            配置會自動保存到您的 Google Sheets「<strong>系統配置</strong>」工作表中。<br>
+                            在任何裝置登入相同的 Google 帳號後，配置會自動載入！
+                        </p>
+                    </div>
+                    
                     <div class="form-group">
                         <label>Google API 用戶端 ID</label>
                         <input type="text" id="settingsClientId" placeholder="從 Google Cloud Console 取得">
@@ -1071,6 +1085,7 @@
                     <button class="btn btn-primary" onclick="saveSettings()">💾 儲存設定</button>
                     <button class="btn btn-success" onclick="testConnection()" style="margin-left: 10px;">✅ 測試連線</button>
                     <button class="btn btn-primary" onclick="loadSettings()" style="margin-left: 10px;">🔄 載入設定</button>
+                    <button class="btn btn-primary" onclick="manualSyncConfig()" style="margin-left: 10px;">☁️ 手動同步</button>
 
                     <div id="settingsStatus"></div>
                 </div>
@@ -1233,11 +1248,11 @@
 
                 <div style="margin-top: 30px; background: #f8f9fa; padding: 20px; border-radius: 10px;">
                     <h3>關於系統</h3>
-                    <p><strong>版本：</strong>4.3.0 (更新重複問題診斷版)</p>
+                    <p><strong>版本：</strong>4.4.0 (雲端配置同步版)</p>
                     <p><strong>資料來源：</strong>Google Sheets</p>
                     <p><strong>假日API：</strong>Nager.Date (免費)</p>
-                    <p><strong>新增功能：</strong>更新機制檢查工具、完整診斷報告</p>
-                    <p><strong>更新日期：</strong>2026-01-17</p>
+                    <p><strong>新增功能：</strong>☁️ 配置自動同步到 Google Sheets，支援多裝置使用</p>
+                    <p><strong>更新日期：</strong>2026-11-18</p>
                 </div>
             </div>
         </div>
@@ -1309,6 +1324,8 @@
         }
 
         // ==================== 設定管理 ====================
+        const CONFIG_SHEET_NAME = '系統配置';
+        
         function loadConfig() {
             const config = localStorage.getItem('sheetsConfig');
             return config ? JSON.parse(config) : { clientId: '', sheetId: '', sheetRange: '排班資料!A2:I' };
@@ -1317,6 +1334,194 @@
         function saveConfig(clientId, sheetId, sheetRange) {
             const config = { clientId, sheetId, sheetRange };
             localStorage.setItem('sheetsConfig', JSON.stringify(config));
+        }
+
+        // 從 Google Sheets 讀取配置
+        async function loadConfigFromSheets() {
+            const localConfig = loadConfig();
+            if (!localConfig.sheetId || !accessToken) {
+                return null;
+            }
+
+            try {
+                gapi.client.setToken({ access_token: accessToken });
+                
+                const response = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: localConfig.sheetId,
+                    range: `${CONFIG_SHEET_NAME}!A2:B10`
+                });
+
+                const rows = response.result.values;
+                if (!rows || rows.length === 0) {
+                    return null;
+                }
+
+                const config = {};
+                rows.forEach(row => {
+                    if (row[0] && row[1]) {
+                        config[row[0]] = row[1];
+                    }
+                });
+
+                return {
+                    clientId: config.clientId || localConfig.clientId,
+                    sheetId: config.sheetId || localConfig.sheetId,
+                    sheetRange: config.sheetRange || localConfig.sheetRange || '排班資料!A2:I'
+                };
+            } catch (error) {
+                console.log('從 Sheets 讀取配置失敗，使用本地配置:', error.message);
+                return null;
+            }
+        }
+
+        // 保存配置到 Google Sheets
+        async function saveConfigToSheets(clientId, sheetId, sheetRange) {
+            if (!sheetId || !accessToken) {
+                return false;
+            }
+
+            try {
+                gapi.client.setToken({ access_token: accessToken });
+                
+                // 先檢查工作表是否存在，不存在則創建
+                await ensureConfigSheetExists(sheetId);
+
+                const values = [
+                    ['設定項目', '設定值'],
+                    ['clientId', clientId],
+                    ['sheetId', sheetId],
+                    ['sheetRange', sheetRange],
+                    ['lastUpdated', new Date().toISOString()],
+                    ['', ''],
+                    ['說明', '此工作表由系統自動管理，請勿手動修改'],
+                    ['備註', '配置會自動同步到所有登入此 Google 帳號的裝置']
+                ];
+
+                await gapi.client.sheets.spreadsheets.values.update({
+                    spreadsheetId: sheetId,
+                    range: `${CONFIG_SHEET_NAME}!A1:B10`,
+                    valueInputOption: 'RAW',
+                    resource: { values }
+                });
+
+                console.log('✅ 配置已同步到 Google Sheets');
+                return true;
+            } catch (error) {
+                console.error('保存配置到 Sheets 失敗:', error);
+                return false;
+            }
+        }
+
+        // 確保系統配置工作表存在
+        async function ensureConfigSheetExists(sheetId) {
+            try {
+                gapi.client.setToken({ access_token: accessToken });
+                
+                const response = await gapi.client.sheets.spreadsheets.get({
+                    spreadsheetId: sheetId
+                });
+
+                const sheets = response.result.sheets || [];
+                const configSheetExists = sheets.some(sheet => 
+                    sheet.properties.title === CONFIG_SHEET_NAME
+                );
+
+                if (!configSheetExists) {
+                    // 創建系統配置工作表
+                    await gapi.client.sheets.spreadsheets.batchUpdate({
+                        spreadsheetId: sheetId,
+                        resource: {
+                            requests: [{
+                                addSheet: {
+                                    properties: {
+                                        title: CONFIG_SHEET_NAME,
+                                        gridProperties: {
+                                            rowCount: 20,
+                                            columnCount: 5,
+                                            frozenRowCount: 1
+                                        },
+                                        tabColor: {
+                                            red: 0.2,
+                                            green: 0.6,
+                                            blue: 1.0
+                                        }
+                                    }
+                                }
+                            }]
+                        }
+                    });
+                    console.log(`✅ 已創建「${CONFIG_SHEET_NAME}」工作表`);
+                }
+            } catch (error) {
+                console.error('檢查/創建配置工作表失敗:', error);
+                throw error;
+            }
+        }
+
+        // 同步配置（登入後自動執行）
+        async function syncConfig() {
+            try {
+                // 嘗試從 Sheets 讀取配置
+                const sheetsConfig = await loadConfigFromSheets();
+                
+                if (sheetsConfig) {
+                    // 如果 Sheets 有配置，使用它並更新 localStorage
+                    saveConfig(sheetsConfig.clientId, sheetsConfig.sheetId, sheetsConfig.sheetRange);
+                    console.log('✅ 已從 Google Sheets 載入配置');
+                    showSettingsStatus('✅ 已自動載入雲端配置', 'success');
+                    return true;
+                } else {
+                    // 如果 Sheets 沒有配置，但 localStorage 有，則同步到 Sheets
+                    const localConfig = loadConfig();
+                    if (localConfig.clientId && localConfig.sheetId) {
+                        const saved = await saveConfigToSheets(
+                            localConfig.clientId,
+                            localConfig.sheetId,
+                            localConfig.sheetRange
+                        );
+                        if (saved) {
+                            console.log('✅ 已將本地配置同步到 Google Sheets');
+                            showSettingsStatus('✅ 配置已同步到雲端', 'success');
+                        }
+                    }
+                    return false;
+                }
+            } catch (error) {
+                console.error('配置同步失敗:', error);
+                return false;
+            }
+        }
+
+        // 手動同步配置
+        async function manualSyncConfig() {
+            if (!accessToken) {
+                showSettingsStatus('❌ 請先登入 Google 帳號', 'error');
+                return;
+            }
+
+            const localConfig = loadConfig();
+            if (!localConfig.clientId || !localConfig.sheetId) {
+                showSettingsStatus('❌ 請先完成設定', 'error');
+                return;
+            }
+
+            showSettingsStatus('⏳ 正在同步配置到雲端...', 'info');
+            
+            try {
+                const saved = await saveConfigToSheets(
+                    localConfig.clientId,
+                    localConfig.sheetId,
+                    localConfig.sheetRange
+                );
+                
+                if (saved) {
+                    showSettingsStatus('✅ 配置已成功同步到雲端！', 'success');
+                } else {
+                    showSettingsStatus('❌ 同步失敗，請檢查網路連線', 'error');
+                }
+            } catch (error) {
+                showSettingsStatus('❌ 同步失敗：' + error.message, 'error');
+            }
         }
 
         function loadSettingsOnInit() {
@@ -1334,7 +1539,7 @@
             showSettingsStatus('已載入設定', 'success');
         }
 
-        function saveSettings() {
+        async function saveSettings() {
             const clientId = document.getElementById('settingsClientId').value.trim();
             const sheetId = document.getElementById('settingsSheetId').value.trim();
             const sheetRange = document.getElementById('settingsSheetRange').value.trim();
@@ -1344,8 +1549,21 @@
                 return;
             }
 
+            // 先保存到 localStorage
             saveConfig(clientId, sheetId, sheetRange);
-            showSettingsStatus('設定已儲存', 'success');
+            showSettingsStatus('⏳ 正在儲存配置...', 'info');
+
+            // 如果已登入，同時保存到 Google Sheets
+            if (accessToken) {
+                const saved = await saveConfigToSheets(clientId, sheetId, sheetRange);
+                if (saved) {
+                    showSettingsStatus('✅ 設定已儲存並同步到雲端', 'success');
+                } else {
+                    showSettingsStatus('✅ 設定已儲存到本地（雲端同步失敗）', 'success');
+                }
+            } else {
+                showSettingsStatus('✅ 設定已儲存（登入後將自動同步到雲端）', 'success');
+            }
 
             // 重新初始化 GIS
             tokenClient = google.accounts.oauth2.initTokenClient({
@@ -1470,6 +1688,9 @@
 
         // ==================== 應用初始化 ====================
         async function initializeApp() {
+            // 🆕 首先同步配置（從 Sheets 載入或上傳到 Sheets）
+            await syncConfig();
+            
             await loadSettings();
             await loadAllShifts();
             await loadUnitsDetailed(); // 載入事業單位詳細列表
