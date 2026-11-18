@@ -501,13 +501,52 @@
                 使用 Google 帳號登入
             </button>
             <div id="loginStatus" style="margin-top: 20px;"></div>
+
+            <!-- 登入前也能設定（未登入時看不到主畫面的設定標籤） -->
+            <div style="margin-top: 25px; text-align: left;">
+                <button type="button" id="toggleLoginSetupBtn" onclick="toggleLoginSetup()"
+                    style="width: 100%; background: #fff; border: 2px solid #667eea; color: #667eea; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;">
+                    ⚙️ 尚未設定？點此填入登入資料
+                </button>
+
+                <div id="loginSetupPanel" style="display: none; margin-top: 15px; padding: 18px; background: #f8f9fa; border-radius: 10px; border: 1px solid #e0e0e0;">
+                    <h4 style="margin: 0 0 12px 0; color: #333;">登入前設定</h4>
+                    <p style="margin: 0 0 15px 0; color: #666; font-size: 13px; line-height: 1.6;">
+                        「⚙️ 設定」標籤要登入後才會出現。<br>
+                        請先在這裡填入用戶端 ID 與 Sheet ID，再登入。
+                    </p>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #555;">Google API 用戶端 ID *</label>
+                        <input type="text" id="loginClientId" placeholder="xxxxx.apps.googleusercontent.com"
+                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #555;">Google Sheets ID *</label>
+                        <input type="text" id="loginSheetId" placeholder="從 Sheets 網址 /d/ 後面複製"
+                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #555;">排班資料範圍</label>
+                        <input type="text" id="loginSheetRange" value="排班資料!A2:I"
+                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box;">
+                    </div>
+
+                    <button type="button" class="btn btn-primary" onclick="saveLoginSetup()" style="width: 100%;">
+                        💾 儲存設定
+                    </button>
+                    <div id="loginSetupStatus" style="margin-top: 12px;"></div>
+                </div>
+            </div>
             
             <div style="margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 8px; text-align: left;">
                 <h4 style="color: #667eea; margin-bottom: 10px;">⚠️ 使用前須知</h4>
                 <ol style="color: #666; font-size: 14px; line-height: 1.8;">
-                    <li>需要先完成 Google Cloud API 設定</li>
-                    <li>參考 WEB_GOOGLE_SHEETS_SETUP.md</li>
-                    <li>準備好用戶端 ID 和 Sheet ID</li>
+                    <li>先點上方「⚙️ 尚未設定？」填入用戶端 ID 和 Sheet ID</li>
+                    <li>確認 Google Cloud OAuth 已加入 GitHub Pages 網址</li>
+                    <li>再點「使用 Google 帳號登入」</li>
                 </ol>
                 <div style="background: #e8f5e9; padding: 10px; border-radius: 8px; margin-top: 15px;">
                     <p style="margin: 0; color: #2e7d32; font-size: 13px;">
@@ -1526,9 +1565,62 @@
 
         function loadSettingsOnInit() {
             const config = loadConfig();
+            // 預填登入畫面的設定欄位
+            const loginClientId = document.getElementById('loginClientId');
+            const loginSheetId = document.getElementById('loginSheetId');
+            const loginSheetRange = document.getElementById('loginSheetRange');
+            if (loginClientId) loginClientId.value = config.clientId || '';
+            if (loginSheetId) loginSheetId.value = config.sheetId || '';
+            if (loginSheetRange) loginSheetRange.value = config.sheetRange || '排班資料!A2:I';
+
             if (!config.clientId) {
-                showLoginStatus('請先完成 Google Cloud API 設定', 'error');
+                showLoginStatus('請先點「⚙️ 尚未設定？」填入用戶端 ID 和 Sheet ID', 'error');
+                // 自動展開設定面板
+                const panel = document.getElementById('loginSetupPanel');
+                if (panel) panel.style.display = 'block';
             }
+        }
+
+        function toggleLoginSetup() {
+            const panel = document.getElementById('loginSetupPanel');
+            if (!panel) return;
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function saveLoginSetup() {
+            const clientId = document.getElementById('loginClientId').value.trim();
+            const sheetId = document.getElementById('loginSheetId').value.trim();
+            const sheetRange = document.getElementById('loginSheetRange').value.trim() || '排班資料!A2:I';
+            const statusEl = document.getElementById('loginSetupStatus');
+
+            if (!clientId || !sheetId) {
+                statusEl.innerHTML = '<div class="status-message status-error">請填入用戶端 ID 和 Sheet ID</div>';
+                return;
+            }
+
+            saveConfig(clientId, sheetId, sheetRange);
+
+            // 同步到登入後設定頁的欄位（若存在）
+            const settingsClientId = document.getElementById('settingsClientId');
+            const settingsSheetId = document.getElementById('settingsSheetId');
+            const settingsSheetRange = document.getElementById('settingsSheetRange');
+            if (settingsClientId) settingsClientId.value = clientId;
+            if (settingsSheetId) settingsSheetId.value = sheetId;
+            if (settingsSheetRange) settingsSheetRange.value = sheetRange;
+
+            // 重新初始化 GIS Token Client
+            if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: clientId,
+                    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar',
+                    callback: '',
+                });
+                gisInited = true;
+                maybeEnableButtons();
+            }
+
+            statusEl.innerHTML = '<div class="status-message status-success">✅ 設定已儲存，請點上方「使用 Google 帳號登入」</div>';
+            showLoginStatus('✅ 設定完成，可以登入了', 'success');
         }
 
         function loadSettings() {
@@ -1643,20 +1735,45 @@
                 return;
             }
 
+            if (!tokenClient) {
+                showLoginStatus('Google 登入元件尚未載入完成，請稍候幾秒再試', 'error');
+                return;
+            }
+
+            showLoginStatus('⏳ 正在開啟 Google 登入視窗...', 'info');
+
             tokenClient.callback = async (resp) => {
                 if (resp.error !== undefined) {
-                    showLoginStatus('登入失敗：' + resp.error, 'error');
-                    throw (resp);
+                    showLoginStatus('登入失敗：' + resp.error + (resp.error_description ? '（' + resp.error_description + '）' : ''), 'error');
+                    console.error('登入失敗', resp);
+                    return;
                 }
                 accessToken = resp.access_token;
-                
-                await loadUserInfo();
-                
+                gapi.client.setToken({ access_token: accessToken });
+
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'block';
-                
-                // 載入初始資料
-                await initializeApp();
+
+                loadUserInfo();
+
+                try {
+                    await initializeApp();
+                } catch (error) {
+                    console.error('初始化失敗', error);
+                    const msg = (error && (error.result?.error?.message || error.message)) || JSON.stringify(error);
+                    alert('已登入，但載入資料失敗：\n' + msg + '\n\n請到「⚙️ 設定」確認 Sheet ID 是否正確。');
+                }
+            };
+
+            tokenClient.error_callback = (err) => {
+                console.error('登入視窗錯誤', err);
+                if (err && err.type === 'popup_failed_to_open') {
+                    showLoginStatus('❌ 登入視窗被瀏覽器封鎖，請允許此網站的彈出視窗後再試', 'error');
+                } else if (err && err.type === 'popup_closed') {
+                    showLoginStatus('登入視窗已關閉，請再試一次', 'error');
+                } else {
+                    showLoginStatus('❌ 登入失敗：' + (err && (err.message || err.type) || '未知錯誤'), 'error');
+                }
             };
 
             if (accessToken === null) {
