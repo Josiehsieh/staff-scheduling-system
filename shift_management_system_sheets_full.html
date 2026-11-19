@@ -2843,21 +2843,23 @@
                 const oldEventId = shift ? shift.eventId : '';
                 
                 let newEventId = oldEventId;
+                let syncedEventId = null;
                 
                 // 如果啟用自動同步且有舊事件ID，更新行事曆事件
                 if (isAutoSyncEnabled() && oldEventId) {
                     console.log('🔄 更新行事曆事件...');
-                    newEventId = await autoUpdateCalendarEvent(oldEventId, shiftData);
-                    if (!newEventId) newEventId = oldEventId; // 如果更新失敗，保留舊ID
+                    syncedEventId = await autoUpdateCalendarEvent(oldEventId, shiftData);
+                    if (syncedEventId) newEventId = syncedEventId; // 更新失敗時保留舊ID
                 } else if (isAutoSyncEnabled() && !oldEventId) {
                     // 如果沒有舊事件ID但啟用同步，建立新事件
                     console.log('📅 建立新的行事曆事件...');
-                    newEventId = await autoSyncShiftToCalendar(shiftData);
+                    syncedEventId = await autoSyncShiftToCalendar(shiftData);
+                    newEventId = syncedEventId;
                 }
                 
                 const success = await updateShiftInSheet(editingShiftIndex, shiftData, newEventId);
                 if (success) {
-                    alert('儲存成功！' + (newEventId && isAutoSyncEnabled() ? '\n已同步更新行事曆' : ''));
+                    alert('儲存成功！' + calendarSyncNote(syncedEventId));
                     cancelShiftForm();
                     await loadAllShifts();
                 } else {
@@ -2917,6 +2919,8 @@
                     
                     let successCount = 0;
                     let failCount = 0;
+                    let calendarFailCount = 0;
+                    let calendarFailReason = '';
                     const failedDates = [];
                     
                     // 逐一建立排班
@@ -2932,6 +2936,10 @@
                             // 自動同步到 Google 行事曆並取得事件ID
                             if (isAutoSyncEnabled()) {
                                 eventId = await autoSyncShiftToCalendar(dateShiftData);
+                                if (!eventId) {
+                                    calendarFailCount++;
+                                    calendarFailReason = lastCalendarSyncError;
+                                }
                             }
                             
                             const success = await addShiftToSheet(dateShiftData, eventId);
@@ -2961,6 +2969,13 @@
                     let resultMsg = `✅ 重複排班建立完成！\n\n成功：${successCount} 個\n失敗：${failCount} 個`;
                     if (failedDates.length > 0) {
                         resultMsg += `\n\n失敗的日期：\n${failedDates.join('\n')}`;
+                    }
+                    if (!isAutoSyncEnabled()) {
+                        resultMsg += calendarSyncNote(null);
+                    } else if (calendarFailCount > 0) {
+                        resultMsg += `\n\n❌ 其中 ${calendarFailCount} 個沒有同步到行事曆：${calendarFailReason || '未知原因'}`;
+                    } else {
+                        resultMsg += '\n📅 已全部同步到 Google 行事曆' + inviteNote();
                     }
                     alert(resultMsg);
                     
@@ -2993,7 +3008,7 @@
                 const success = await addShiftToSheet(shiftData, eventId);
                 
                 if (success) {
-                    alert('儲存成功！' + (eventId ? '\n已同步到行事曆' : ''));
+                    alert('儲存成功！' + calendarSyncNote(eventId));
                     cancelShiftForm();
                     await loadAllShifts();
                 } else {
@@ -4214,8 +4229,75 @@
             resultDiv.innerHTML = html;
         }
         
+        let lastCalendarSyncError = ''; // 最近一次行事曆同步失敗的原因，顯示在儲存結果中
+        let lastCalendarInvites = { invited: [], missing: [] }; // 最近一次同步時有寄邀請與沒設郵件的人員
+
+        function recordInvites(staffNames, result) {
+            const names = (staffNames || '').split(',').map(s => s.trim()).filter(Boolean);
+            const invitedEmails = ((result && result.attendees) || []).map(a => (a.email || '').toLowerCase());
+            lastCalendarInvites = {
+                invited: names.filter(n => staffEmailMap[n] && invitedEmails.includes(staffEmailMap[n].toLowerCase()))
+                              .map(n => `${n}（${staffEmailMap[n]}）`),
+                missing: names.filter(n => !staffEmailMap[n])
+            };
+        }
+
+        function inviteNote() {
+            let note = '';
+            if (lastCalendarInvites.invited.length > 0) {
+                note += '\n📧 已寄送行事曆邀請給：\n   ' + lastCalendarInvites.invited.join('\n   ');
+            }
+            if (lastCalendarInvites.missing.length > 0) {
+                note += '\n⚠️ 以下人員沒有設定郵件，未寄送邀請：' + lastCalendarInvites.missing.join('、') +
+                        '\n   （請到「📧 醫師郵件」確認姓名與事業單位中的寫法完全相同）';
+            }
+            return note;
+        }
+
+        // 跨夜班（結束時間早於開始時間）的結束日期要算到隔天
+        function buildEventTimes(shiftData) {
+            let endDate = shiftData.date;
+            if (shiftData.endTime < shiftData.startTime) {
+                const d = new Date(shiftData.date + 'T00:00:00');
+                d.setDate(d.getDate() + 1);
+                endDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            }
+            return {
+                start: { dateTime: `${shiftData.date}T${shiftData.startTime}:00`, timeZone: 'Asia/Taipei' },
+                end: { dateTime: `${endDate}T${shiftData.endTime}:00`, timeZone: 'Asia/Taipei' }
+            };
+        }
+
+        function describeCalendarError(error) {
+            const status = error && (error.status || (error.result && error.result.error && error.result.error.code));
+            const msg = (error && ((error.result && error.result.error && error.result.error.message) || error.message)) || '未知錯誤';
+            if (status === 401) return '登入已過期，請登出後重新登入';
+            if (status === 403 && /insufficient|scope/i.test(msg)) return '登入時沒有授權 Google 日曆，請登出後重新登入，並在 Google 授權畫面勾選「Google 日曆」相關權限';
+            if (status === 403) return '沒有權限寫入行事曆（' + msg + '），請確認 Google Cloud 已啟用 Google Calendar API';
+            if (status === 400) return '行事曆資料格式錯誤（' + msg + '）';
+            return msg;
+        }
+
+        function calendarReady() {
+            if (!accessToken || !gapi.client || !gapi.client.calendar) {
+                lastCalendarSyncError = 'Google 行事曆 API 尚未載入，請重新整理頁面後再登入';
+                return false;
+            }
+            gapi.client.setToken({ access_token: accessToken });
+            return true;
+        }
+
+        // 儲存結果訊息中的行事曆同步說明
+        function calendarSyncNote(eventId) {
+            if (eventId) return '\n📅 已同步到 Google 行事曆' + inviteNote();
+            if (!isAutoSyncEnabled()) return '\n\n⚠️ 沒有同步到行事曆：「自動同步到 Google 行事曆」尚未開啟（請到「⚙️ 設定」勾選）';
+            return '\n\n❌ 行事曆同步失敗：' + (lastCalendarSyncError || '未知原因');
+        }
+
         // 自動同步排班到行事曆（包含錯誤處理）
         async function autoSyncShiftToCalendar(shiftData, shiftIndex) {
+            lastCalendarSyncError = '';
+            lastCalendarInvites = { invited: [], missing: [] };
             if (!isAutoSyncEnabled()) {
                 console.log('⏸️ 自動同步已關閉，跳過');
                 return null;
@@ -4224,9 +4306,8 @@
             console.log('🔄 開始自動同步排班到行事曆...', shiftData);
             
             try {
-                // 檢查是否已登入
-                if (!gapiInited || !gisInited) {
-                    console.warn('⚠️ Google API 未初始化');
+                if (!calendarReady()) {
+                    console.warn('⚠️ ' + lastCalendarSyncError);
                     return null;
                 }
                 
@@ -4239,14 +4320,7 @@
                     summary: `${shiftData.unit} - 排班`,
                     location: shiftData.location || shiftData.unit,
                     description: `人員：${shiftData.staff}\\n地點：${shiftData.location || shiftData.unit}\\n備註：${shiftData.notes || '無'}\\n\\n此為自動排班通知，請確認您的行程安排。`,
-                    start: {
-                        dateTime: `${shiftData.date}T${shiftData.startTime}:00`,
-                        timeZone: 'Asia/Taipei'
-                    },
-                    end: {
-                        dateTime: `${shiftData.date}T${shiftData.endTime}:00`,
-                        timeZone: 'Asia/Taipei'
-                    },
+                    ...buildEventTimes(shiftData),
                     colorId: getCalendarColorId(shiftData.color),
                     attendees: attendees, // 添加參與者
                     reminders: {
@@ -4271,6 +4345,7 @@
                 });
                 
                 console.log('✅ 自動同步成功，事件ID：', response.result.id);
+                recordInvites(shiftData.staff, response.result);
                 
                 if (attendees.length > 0) {
                     console.log(`📧 已發送郵件通知給 ${attendees.length} 位人員`);
@@ -4280,7 +4355,8 @@
                 
             } catch (error) {
                 console.error('❌ 自動同步失敗：', error);
-                // 不阻斷排班建立流程，只記錄錯誤
+                // 不阻斷排班建立流程，失敗原因會顯示在儲存結果中
+                lastCalendarSyncError = describeCalendarError(error);
                 return null;
             }
         }
@@ -4331,6 +4407,8 @@
         
         // 自動更新行事曆事件
         async function autoUpdateCalendarEvent(eventId, shiftData) {
+            lastCalendarSyncError = '';
+            lastCalendarInvites = { invited: [], missing: [] };
             if (!isAutoSyncEnabled() || !eventId) {
                 return null;
             }
@@ -4338,9 +4416,8 @@
             console.log('🔄 自動更新行事曆事件：', eventId);
             
             try {
-                // 檢查是否已登入
-                if (!gapiInited || !gisInited) {
-                    console.warn('⚠️ Google API 未初始化');
+                if (!calendarReady()) {
+                    console.warn('⚠️ ' + lastCalendarSyncError);
                     return null;
                 }
                 
@@ -4353,14 +4430,7 @@
                     summary: `${shiftData.unit} - 排班`,
                     location: shiftData.location || shiftData.unit,
                     description: `人員：${shiftData.staff}\\n地點：${shiftData.location || shiftData.unit}\\n備註：${shiftData.notes || '無'}\\n\\n此為自動排班通知，請確認您的行程安排。`,
-                    start: {
-                        dateTime: `${shiftData.date}T${shiftData.startTime}:00`,
-                        timeZone: 'Asia/Taipei'
-                    },
-                    end: {
-                        dateTime: `${shiftData.date}T${shiftData.endTime}:00`,
-                        timeZone: 'Asia/Taipei'
-                    },
+                    ...buildEventTimes(shiftData),
                     colorId: getCalendarColorId(shiftData.color),
                     attendees: attendees,
                     reminders: {
@@ -4385,6 +4455,7 @@
                 });
                 
                 console.log('✅ 行事曆事件已更新，事件ID：', response.result.id);
+                recordInvites(shiftData.staff, response.result);
                 
                 if (attendees.length > 0) {
                     console.log(`📧 已發送更新通知給 ${attendees.length} 位人員`);
@@ -4402,6 +4473,7 @@
                     return newEventId;
                 }
                 
+                lastCalendarSyncError = describeCalendarError(error);
                 return null;
             }
         }
@@ -5259,6 +5331,11 @@
             }
             
             try {
+                if (!calendarReady()) {
+                    alert('❌ ' + lastCalendarSyncError);
+                    return;
+                }
+
                 // 取得參與者郵件列表
                 const attendees = getStaffEmails(shift.staff);
                 console.log('📧 參與者列表：', attendees);
@@ -5268,14 +5345,7 @@
                     summary: `${shift.unit} - 排班`,
                     location: shift.location || shift.unit,
                     description: `人員：${shift.staff}\\n地點：${shift.location || shift.unit}\\n備註：${shift.notes || '無'}\\n\\n此為手動上傳的排班通知。`,
-                    start: {
-                        dateTime: `${shift.date}T${shift.startTime}:00`,
-                        timeZone: 'Asia/Taipei'
-                    },
-                    end: {
-                        dateTime: `${shift.date}T${shift.endTime}:00`,
-                        timeZone: 'Asia/Taipei'
-                    },
+                    ...buildEventTimes(shift),
                     colorId: getCalendarColorId(shift.color),
                     attendees: attendees, // 添加參與者
                     reminders: {
@@ -5313,12 +5383,7 @@
             } catch (error) {
                 console.error('❌ 上傳到行事曆失敗：', error);
                 
-                if (error.status === 401) {
-                    alert('❌ 權限不足，請重新登入並授權行事曆存取權限');
-                    handleSignOut();
-                } else {
-                    alert(`❌ 上傳失敗：${error.message || '未知錯誤'}\\n\\n請確認已啟用 Google Calendar API 並授權存取權限。`);
-                }
+                alert('❌ 上傳失敗：' + describeCalendarError(error));
             }
         }
         
@@ -5359,14 +5424,7 @@
                             summary: `${shift.unit} - 排班`,
                             location: shift.location || shift.unit,
                             description: `人員：${shift.staff}\\n備註：${shift.notes || '無'}`,
-                            start: {
-                                dateTime: `${shift.date}T${shift.startTime}:00`,
-                                timeZone: 'Asia/Taipei'
-                            },
-                            end: {
-                                dateTime: `${shift.date}T${shift.endTime}:00`,
-                                timeZone: 'Asia/Taipei'
-                            },
+                            ...buildEventTimes(shift),
                             colorId: getCalendarColorId(shift.color),
                             reminders: {
                                 useDefault: false,
